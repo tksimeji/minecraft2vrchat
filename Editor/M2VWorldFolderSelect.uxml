@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UXML xmlns="UnityEngine.UIElements">
+    <VisualElement name="root" class="minecraft-root">
+        <VisualElement class="panel">
+            <Label text="Minecraft World" class="title" />
+            <Label text="Select a world folder to import." class="subtitle" />
+
+            <Label text="1. Choose Folder" class="section-title" />
+            <VisualElement class="field-row">
+                <Label name="worldPathLabel" text="No folder selected." class="path-label" />
+                <Button name="browseButton" text="Browse" class="mc-button" />
+            </VisualElement>
+
+            <Label name="statusLabel" text="No folder selected." class="status" />
+            <Label text="Tip: Drag &amp; drop a folder here" class="hint" />
+
+            <VisualElement class="divider" />
+
+            <Label text="2. Actions" class="section-title" />
+            <VisualElement class="button-row">
+                <Button name="openButton" text="Open Folder" class="mc-button" />
+                <Button name="clearButton" text="Clear" class="mc-button" />
+                <Button name="importButton" text="Import" class="mc-button primary" />
+            </VisualElement>
+        </VisualElement>
+    </VisualElement>
+</UXML>

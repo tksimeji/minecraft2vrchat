@@ -1,0 +1,170 @@
+.minecraft-root {
+    flex-grow: 1;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-image: url("dirt.png");
+    background-repeat: repeat;
+    background-size: auto;
+    background-position: 0 0;
+    background-color: rgba(0, 0, 0, 0.2);
+    background-blend-mode: multiply;
+    -unity-font-definition: url("mojangles_font.asset");
+    -unity-font: url("mojangles.ttf");
+    color: #ffffff;
+}
+
+.minecraft-root * {
+    -unity-font-definition: url("mojangles_font.asset");
+    -unity-font: url("mojangles.ttf");
+}
+
+.panel {
+    width: 560px;
+    max-width: 92%;
+    padding: 18px 18px 14px 18px;
+    background-color: rgba(0, 0, 0, 0.55);
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.25);
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.title {
+    font-size: 20px;
+    unity-font-style: bold;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 12px;
+    color: #d7d7d7;
+    margin-bottom: 10px;
+}
+
+.section-title {
+    font-size: 12px;
+    color: #f2f2f2;
+    unity-font-style: bold;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+.field-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.path-label {
+    flex-grow: 1;
+    flex-basis: 0%;
+    min-width: 0px;
+    height: 28px;
+    margin-right: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    background-image: url("text_field.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    border-width: 0px;
+    background-color: rgba(0, 0, 0, 0);
+    color: #ffffff;
+    --unity-cursor-color: #ffffff;
+    --unity-selection-color: rgba(120, 180, 255, 0.5);
+    align-items: center;
+}
+
+.path-label:focus,
+.path-label:active {
+    background-image: url("text_field_highlighted.png");
+}
+
+.path-label:hover {
+    background-image: url("text_field_highlighted.png");
+}
+
+.mc-button {
+    height: 28px;
+    min-width: 88px;
+    padding-left: 10px;
+    padding-right: 10px;
+    background-image: url("button.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    border-width: 0px;
+    color: #ffffff;
+}
+
+.mc-button:hover,
+.mc-button:active,
+.mc-button:focus {
+    background-image: url("button_highlighted.png");
+}
+
+.button-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.button-row .mc-button {
+    flex-grow: 1;
+    flex-basis: 0%;
+    min-width: 120px;
+    margin-right: 6px;
+}
+
+.button-row .mc-button:last-child {
+    margin-right: 0px;
+}
+
+.status {
+    font-size: 12px;
+    margin-top: 6px;
+    margin-bottom: 4px;
+}
+
+.status.ok {
+    color: #6cf27a;
+}
+
+.status.error {
+    color: #ff6b6b;
+}
+
+.hint {
+    font-size: 11px;
+    color: #bfbfbf;
+}
+
+.divider {
+    height: 1px;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 420px) {
+    .field-row,
+    .button-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .path-label {
+        margin-right: 0px;
+        margin-bottom: 8px;
+    }
+
+    .button-row .mc-button {
+        margin-right: 0px;
+        margin-bottom: 6px;
+    }
+
+    .button-row .mc-button:last-child {
+        margin-bottom: 0px;
+    }
+}
