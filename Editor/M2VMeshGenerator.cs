@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using fNbt;
 using UnityEngine;
 
@@ -14,11 +15,13 @@ namespace M2V.Editor
             public bool ApplyCoordinateTransform;
             public bool LogSliceStats;
             public bool LogPaletteBounds;
+            public bool UseTextureAtlas;
         }
 
-        public static Mesh GenerateMesh(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, Options options, ref bool logChunkOnce, out string message)
+        public static Mesh GenerateMesh(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, string minecraftJarPath, Options options, ref bool logChunkOnce, out string message, out Texture2D atlasTexture)
         {
             message = string.Empty;
+            atlasTexture = null;
             var sizeX = max.x - min.x + 1;
             var sizeY = max.y - min.y + 1;
             var sizeZ = max.z - min.z + 1;
@@ -35,8 +38,44 @@ namespace M2V.Editor
                 return null;
             }
 
-            var solids = new bool[volume];
-            if (!FillSolidBlocks(worldFolder, dimensionId, min, max, solids, sizeX, sizeY, sizeZ, ref logChunkOnce, options.LogPaletteBounds))
+            Dictionary<string, Rect> uvByName = null;
+            Dictionary<string, int> idByName = null;
+            List<Rect> uvById = null;
+
+            if (options.UseTextureAtlas)
+            {
+                if (string.IsNullOrEmpty(minecraftJarPath) || !File.Exists(minecraftJarPath))
+                {
+                    message = "[Minecraft2VRChat] Minecraft version jar not found for texture lookup.";
+                    return null;
+                }
+
+                var blockNames = CollectBlockNames(worldFolder, dimensionId, min, max, ref logChunkOnce);
+                if (blockNames.Count == 0)
+                {
+                    message = "[Minecraft2VRChat] No blocks found in range for texture atlas.";
+                    return null;
+                }
+
+                atlasTexture = BuildTextureAtlas(minecraftJarPath, blockNames, out uvByName);
+                if (atlasTexture == null || uvByName == null || uvByName.Count == 0)
+                {
+                    message = "[Minecraft2VRChat] Failed to build texture atlas.";
+                    return null;
+                }
+
+                idByName = new Dictionary<string, int>(uvByName.Count + 1, StringComparer.Ordinal);
+                uvById = new List<Rect>(uvByName.Count + 1) { new Rect(0f, 0f, 0f, 0f) };
+                foreach (var pair in uvByName)
+                {
+                    var id = uvById.Count;
+                    idByName[pair.Key] = id;
+                    uvById.Add(pair.Value);
+                }
+            }
+
+            var blocks = new int[volume];
+            if (!FillBlockIds(worldFolder, dimensionId, min, max, blocks, sizeX, sizeY, sizeZ, idByName, ref logChunkOnce, options.LogPaletteBounds))
             {
                 message = "[Minecraft2VRChat] Failed to read blocks for meshing (region folder missing or read failure).";
                 return null;
@@ -44,12 +83,12 @@ namespace M2V.Editor
 
             if (options.LogSliceStats)
             {
-                LogSolidSliceStats(solids, sizeX, sizeY, sizeZ, min);
+                LogSolidSliceStats(blocks, sizeX, sizeY, sizeZ, min);
             }
 
             var mesh = options.UseGreedy
-                ? BuildGreedyMesh(solids, min, sizeX, sizeY, sizeZ, options.ApplyCoordinateTransform)
-                : BuildNaiveMesh(solids, min, sizeX, sizeY, sizeZ, options.ApplyCoordinateTransform);
+                ? BuildGreedyMesh(blocks, uvById, min, sizeX, sizeY, sizeZ, options.ApplyCoordinateTransform)
+                : BuildNaiveMesh(blocks, uvById, min, sizeX, sizeY, sizeZ, options.ApplyCoordinateTransform);
 
             if (mesh == null)
             {
@@ -88,6 +127,280 @@ namespace M2V.Editor
             }
 
             return count;
+        }
+
+        private static HashSet<string> CollectBlockNames(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, ref bool logChunkOnce)
+        {
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            var dimensionFolder = GetDimensionFolder(worldFolder, dimensionId);
+            if (string.IsNullOrEmpty(dimensionFolder))
+            {
+                return result;
+            }
+
+            var regionFolder = Path.Combine(dimensionFolder, "region");
+            if (!Directory.Exists(regionFolder))
+            {
+                return result;
+            }
+
+            var chunkMinX = FloorDiv(min.x, 16);
+            var chunkMaxX = FloorDiv(max.x, 16);
+            var chunkMinZ = FloorDiv(min.z, 16);
+            var chunkMaxZ = FloorDiv(max.z, 16);
+
+            for (var cx = chunkMinX; cx <= chunkMaxX; cx++)
+            {
+                for (var cz = chunkMinZ; cz <= chunkMaxZ; cz++)
+                {
+                    CollectBlockNamesInChunk(regionFolder, cx, cz, min, max, result, ref logChunkOnce);
+                }
+            }
+
+            return result;
+        }
+
+        private static void CollectBlockNamesInChunk(string regionFolder, int chunkX, int chunkZ, Vector3Int min, Vector3Int max, HashSet<string> result, ref bool logChunkOnce)
+        {
+            var chunk = LoadChunk(regionFolder, chunkX, chunkZ);
+            if (chunk == null)
+            {
+                return;
+            }
+
+            if (logChunkOnce)
+            {
+                logChunkOnce = false;
+                Debug.Log($"[Minecraft2VRChat] Chunk NBT (sample):\n{chunk}");
+            }
+
+            var baseTag = chunk;
+            if (chunk["Level"] is NbtCompound levelCompound)
+            {
+                baseTag = levelCompound;
+            }
+
+            var sections = baseTag["Sections"] as NbtList ?? baseTag["sections"] as NbtList;
+            if (sections == null)
+            {
+                return;
+            }
+
+            var chunkMinX = chunkX * 16;
+            var chunkMinZ = chunkZ * 16;
+
+            foreach (var sectionTag in sections)
+            {
+                if (sectionTag is not NbtCompound section)
+                {
+                    continue;
+                }
+
+                if (!TryGetSectionY(section, out var sectionY))
+                {
+                    continue;
+                }
+
+                var sectionMinY = sectionY * 16;
+                var sectionMaxY = sectionMinY + 15;
+                if (max.y < sectionMinY || min.y > sectionMaxY)
+                {
+                    continue;
+                }
+
+                if (!TryGetSectionBlockData(section, out var palette, out var blockStates))
+                {
+                    continue;
+                }
+
+                BuildPaletteCaches(palette, out var paletteNames, out var isAir);
+                var bits = GetBitsForSection(palette.Count, blockStates);
+
+                if (bits == 0)
+                {
+                    if (!isAir[0])
+                    {
+                        result.Add(paletteNames[0]);
+                    }
+
+                    continue;
+                }
+
+                if (blockStates == null || blockStates.Length == 0)
+                {
+                    continue;
+                }
+
+                var xMin = Mathf.Max(min.x, chunkMinX);
+                var xMax = Mathf.Min(max.x, chunkMinX + 15);
+                var zMin = Mathf.Max(min.z, chunkMinZ);
+                var zMax = Mathf.Min(max.z, chunkMinZ + 15);
+                var yMin = Mathf.Max(min.y, sectionMinY);
+                var yMax = Mathf.Min(max.y, sectionMaxY);
+
+                for (var y = yMin; y <= yMax; y++)
+                {
+                    var localY = y - sectionMinY;
+                    for (var z = zMin; z <= zMax; z++)
+                    {
+                        var localZ = z - chunkMinZ;
+                        for (var x = xMin; x <= xMax; x++)
+                        {
+                            var localX = x - chunkMinX;
+                            var index = (localY << 8) | (localZ << 4) | localX;
+                            var paletteIndex = GetBlockStateIndex(blockStates, index, bits);
+                            if (paletteIndex >= 0 && paletteIndex < paletteNames.Length && !isAir[paletteIndex])
+                            {
+                                result.Add(paletteNames[paletteIndex]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static Texture2D BuildTextureAtlas(string jarPath, HashSet<string> blockNames, out Dictionary<string, Rect> uvByName)
+        {
+            uvByName = new Dictionary<string, Rect>(StringComparer.Ordinal);
+            if (!File.Exists(jarPath))
+            {
+                return null;
+            }
+
+            var names = new List<string>(blockNames);
+            names.Sort(StringComparer.Ordinal);
+
+            var textures = new List<Texture2D>(names.Count);
+            var tileSize = 16;
+
+            using var zip = ZipFile.OpenRead(jarPath);
+            foreach (var fullName in names)
+            {
+                var tex = LoadBlockTexture(zip, fullName);
+                if (tex == null)
+                {
+                    tex = LoadBlockTexture(zip, "minecraft:dirt");
+                }
+
+                if (tex == null)
+                {
+                    tex = new Texture2D(16, 16, TextureFormat.RGBA32, false);
+                    tex.SetPixels(BuildFallbackPixels(16, 16));
+                    tex.Apply();
+                }
+
+                tileSize = Mathf.Max(tileSize, tex.width);
+                textures.Add(tex);
+            }
+
+            var count = textures.Count;
+            if (count == 0)
+            {
+                return null;
+            }
+
+            var columns = Mathf.CeilToInt(Mathf.Sqrt(count));
+            var rows = Mathf.CeilToInt((float)count / columns);
+            var atlasSize = Mathf.NextPowerOfTwo(Mathf.Max(1, columns * tileSize));
+            atlasSize = Mathf.Max(atlasSize, Mathf.NextPowerOfTwo(rows * tileSize));
+
+            var atlas = new Texture2D(atlasSize, atlasSize, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Repeat
+            };
+            atlas.SetPixels(BuildFallbackPixels(atlasSize, atlasSize));
+
+            for (var i = 0; i < textures.Count; i++)
+            {
+                var col = i % columns;
+                var row = i / columns;
+                var x = col * tileSize;
+                var y = row * tileSize;
+                CopyTextureToAtlas(textures[i], atlas, x, y, tileSize);
+
+                var rect = new Rect(
+                    (float)x / atlasSize,
+                    (float)y / atlasSize,
+                    (float)tileSize / atlasSize,
+                    (float)tileSize / atlasSize);
+
+                uvByName[names[i]] = rect;
+            }
+
+            atlas.Apply();
+            return atlas;
+        }
+
+        private static Texture2D LoadBlockTexture(ZipArchive zip, string blockName)
+        {
+            if (zip == null)
+            {
+                return null;
+            }
+
+            var textureName = blockName.Contains(":") ? blockName.Split(':')[1] : blockName;
+            var path = $"assets/minecraft/textures/block/{textureName}.png";
+            var entry = zip.GetEntry(path);
+            if (entry == null)
+            {
+                return null;
+            }
+
+            using var stream = entry.Open();
+            using var memory = new MemoryStream();
+            stream.CopyTo(memory);
+            var bytes = memory.ToArray();
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            if (!tex.LoadImage(bytes))
+            {
+                return null;
+            }
+
+            tex.filterMode = FilterMode.Point;
+            tex.wrapMode = TextureWrapMode.Repeat;
+            return tex;
+        }
+
+        private static void CopyTextureToAtlas(Texture2D source, Texture2D atlas, int destX, int destY, int tileSize)
+        {
+            if (source == null || atlas == null)
+            {
+                return;
+            }
+
+            var width = source.width;
+            var height = source.height;
+            if (width == tileSize && height == tileSize)
+            {
+                var pixels = source.GetPixels();
+                atlas.SetPixels(destX, destY, tileSize, tileSize, pixels);
+                return;
+            }
+
+            var scaled = new Color[tileSize * tileSize];
+            for (var y = 0; y < tileSize; y++)
+            {
+                var srcY = y * height / tileSize;
+                for (var x = 0; x < tileSize; x++)
+                {
+                    var srcX = x * width / tileSize;
+                    scaled[x + y * tileSize] = source.GetPixel(srcX, srcY);
+                }
+            }
+
+            atlas.SetPixels(destX, destY, tileSize, tileSize, scaled);
+        }
+
+        private static Color[] BuildFallbackPixels(int width, int height)
+        {
+            var colors = new Color[width * height];
+            for (var i = 0; i < colors.Length; i++)
+            {
+                colors[i] = new Color(1f, 0f, 1f, 1f);
+            }
+
+            return colors;
         }
 
         private static string GetDimensionFolder(string worldFolder, string dimensionId)
@@ -175,22 +488,8 @@ namespace M2V.Editor
                     continue;
                 }
 
-                var isAir = new bool[palette.Count];
-                for (var i = 0; i < palette.Count; i++)
-                {
-                    var name = GetBlockName(palette[i]);
-                    isAir[i] = IsAirBlock(name);
-                }
-
-                var bits = GetBitsPerBlock(palette.Count);
-                if (blockStates != null && blockStates.Length > 0)
-                {
-                    var bitsFromData = (blockStates.Length * 64) / 4096;
-                    if (bitsFromData > 0 && bitsFromData <= 32)
-                    {
-                        bits = bitsFromData;
-                    }
-                }
+                BuildPaletteCaches(palette, out var paletteNames, out var isAir);
+                var bits = GetBitsForSection(palette.Count, blockStates);
                 if (bits == 0)
                 {
                     if (isAir[0])
@@ -238,7 +537,7 @@ namespace M2V.Editor
             return count;
         }
 
-        private static bool FillSolidBlocks(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, bool[] solids, int sizeX, int sizeY, int sizeZ, ref bool logChunkOnce, bool logPaletteBounds)
+        private static bool FillBlockIds(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, int[] blocks, int sizeX, int sizeY, int sizeZ, Dictionary<string, int> idByName, ref bool logChunkOnce, bool logPaletteBounds)
         {
             var dimensionFolder = GetDimensionFolder(worldFolder, dimensionId);
             if (string.IsNullOrEmpty(dimensionFolder))
@@ -263,14 +562,14 @@ namespace M2V.Editor
             {
                 for (var cz = chunkMinZ; cz <= chunkMaxZ; cz++)
                 {
-                    FillSolidsInChunk(regionFolder, cx, cz, min, max, solids, sizeX, sizeY, sizeZ, ref logChunkOnce, logPaletteBounds);
+                    FillBlockIdsInChunk(regionFolder, cx, cz, min, max, blocks, sizeX, sizeY, sizeZ, idByName, ref logChunkOnce, logPaletteBounds);
                 }
             }
 
             return true;
         }
 
-        private static void FillSolidsInChunk(string regionFolder, int chunkX, int chunkZ, Vector3Int min, Vector3Int max, bool[] solids, int sizeX, int sizeY, int sizeZ, ref bool logChunkOnce, bool logPaletteBounds)
+        private static void FillBlockIdsInChunk(string regionFolder, int chunkX, int chunkZ, Vector3Int min, Vector3Int max, int[] blocks, int sizeX, int sizeY, int sizeZ, Dictionary<string, int> idByName, ref bool logChunkOnce, bool logPaletteBounds)
         {
             var chunk = LoadChunk(regionFolder, chunkX, chunkZ);
             if (chunk == null)
@@ -323,22 +622,15 @@ namespace M2V.Editor
                     continue;
                 }
 
-                var isAir = new bool[palette.Count];
+                var paletteIds = new int[palette.Count];
                 for (var i = 0; i < palette.Count; i++)
                 {
                     var name = GetBlockName(palette[i]);
-                    isAir[i] = IsAirBlock(name);
+                    paletteIds[i] = ResolveBlockId(idByName, name);
                 }
+                BuildPaletteCaches(palette, out _, out var isAir);
 
-                var bits = GetBitsPerBlock(palette.Count);
-                if (blockStates != null && blockStates.Length > 0)
-                {
-                    var bitsFromData = (blockStates.Length * 64) / 4096;
-                    if (bitsFromData > 0 && bitsFromData <= 32)
-                    {
-                        bits = bitsFromData;
-                    }
-                }
+                var bits = GetBitsForSection(palette.Count, blockStates);
                 var xMin = Mathf.Max(min.x, chunkMinX);
                 var xMax = Mathf.Min(max.x, chunkMinX + 15);
                 var zMin = Mathf.Max(min.z, chunkMinZ);
@@ -350,14 +642,18 @@ namespace M2V.Editor
                 {
                     if (!isAir[0])
                     {
-                        for (var y = yMin; y <= yMax; y++)
+                        var id = paletteIds[0];
+                        if (id > 0)
                         {
-                            for (var z = zMin; z <= zMax; z++)
+                            for (var y = yMin; y <= yMax; y++)
                             {
-                                for (var x = xMin; x <= xMax; x++)
+                                for (var z = zMin; z <= zMax; z++)
                                 {
-                                    var outIndex = (x - min.x) + sizeX * ((y - min.y) + sizeY * (z - min.z));
-                                    solids[outIndex] = true;
+                                    for (var x = xMin; x <= xMax; x++)
+                                    {
+                                        var outIndex = (x - min.x) + sizeX * ((y - min.y) + sizeY * (z - min.z));
+                                        blocks[outIndex] = id;
+                                    }
                                 }
                             }
                         }
@@ -386,12 +682,16 @@ namespace M2V.Editor
                             var index = (localY << 8) | (localZ << 4) | localX;
                             var paletteIndex = GetBlockStateIndex(blockStates, index, bits);
                             totalCount++;
-                            if (paletteIndex >= 0 && paletteIndex < isAir.Length && !isAir[paletteIndex])
+                            if (paletteIndex >= 0 && paletteIndex < paletteIds.Length)
                             {
-                                var outIndex = (x - min.x) + sizeX * ((y - min.y) + sizeY * (z - min.z));
-                                solids[outIndex] = true;
+                                var id = paletteIds[paletteIndex];
+                                if (id > 0 && !isAir[paletteIndex])
+                                {
+                                    var outIndex = (x - min.x) + sizeX * ((y - min.y) + sizeY * (z - min.z));
+                                    blocks[outIndex] = id;
+                                }
                             }
-                            else if (paletteIndex < 0 || paletteIndex >= isAir.Length)
+                            else
                             {
                                 invalidCount++;
                             }
@@ -402,12 +702,32 @@ namespace M2V.Editor
                 if (logPaletteBounds && invalidCount > 0)
                 {
                     Debug.LogWarning($"[Minecraft2VRChat] Palette index out of range: {invalidCount}/{totalCount} " +
-                                     $"(palette {isAir.Length}, bits {bits}, chunk {chunkX},{chunkZ}, sectionY {sectionY}).");
+                                     $"(palette {paletteIds.Length}, bits {bits}, chunk {chunkX},{chunkZ}, sectionY {sectionY}).");
                 }
             }
         }
 
-        private static Mesh BuildGreedyMesh(bool[] solids, Vector3Int min, int sizeX, int sizeY, int sizeZ, bool applyCoordinateTransform)
+        private static int ResolveBlockId(Dictionary<string, int> idByName, string name)
+        {
+            if (idByName == null)
+            {
+                return IsAirBlock(name) ? 0 : 1;
+            }
+
+            if (string.IsNullOrEmpty(name))
+            {
+                return 0;
+            }
+
+            if (idByName.TryGetValue(name, out var id))
+            {
+                return id;
+            }
+
+            return 0;
+        }
+
+        private static Mesh BuildGreedyMesh(int[] blocks, List<Rect> uvById, Vector3Int min, int sizeX, int sizeY, int sizeZ, bool applyCoordinateTransform)
         {
             var vertices = new List<Vector3>();
             var normals = new List<Vector3>();
@@ -433,15 +753,17 @@ namespace M2V.Editor
                     {
                         for (x[u] = 0; x[u] < dims[u]; x[u]++)
                         {
-                            var a = x[d] >= 0 && IsSolid(solids, dims, x[0], x[1], x[2]);
-                            var b = x[d] < dims[d] - 1 && IsSolid(solids, dims, x[0] + q[0], x[1] + q[1], x[2] + q[2]);
-                            if (a == b)
+                            var a = x[d] >= 0 ? GetBlockId(blocks, dims, x[0], x[1], x[2]) : 0;
+                            var b = x[d] < dims[d] - 1 ? GetBlockId(blocks, dims, x[0] + q[0], x[1] + q[1], x[2] + q[2]) : 0;
+                            var aSolid = a > 0;
+                            var bSolid = b > 0;
+                            if (aSolid == bSolid)
                             {
                                 mask[n++] = 0;
                             }
                             else
                             {
-                                mask[n++] = a ? 1 : -1;
+                                mask[n++] = aSolid ? a : -b;
                             }
                         }
                     }
@@ -502,15 +824,15 @@ namespace M2V.Editor
 
                             var uvWidth = w;
                             var uvHeight = h;
+                            var uvRect = GetUvRect(uvById, Mathf.Abs(c));
 
                             if (c > 0)
                             {
-                                // Clockwise winding for Unity front faces.
-                                AddQuad(vertices, triangles, normals, uvs, v0, v2, v3, v1, AxisNormal(d, 1), uvWidth, uvHeight);
+                                AddQuad(vertices, triangles, normals, uvs, v0, v2, v3, v1, AxisNormal(d, 1), uvRect, uvWidth, uvHeight);
                             }
                             else
                             {
-                                AddQuad(vertices, triangles, normals, uvs, v0, v1, v3, v2, AxisNormal(d, -1), uvWidth, uvHeight);
+                                AddQuad(vertices, triangles, normals, uvs, v0, v1, v3, v2, AxisNormal(d, -1), uvRect, uvWidth, uvHeight);
                             }
 
                             for (var l = 0; l < h; l++)
@@ -545,7 +867,7 @@ namespace M2V.Editor
             return mesh;
         }
 
-        private static Mesh BuildNaiveMesh(bool[] solids, Vector3Int min, int sizeX, int sizeY, int sizeZ, bool applyCoordinateTransform)
+        private static Mesh BuildNaiveMesh(int[] blocks, List<Rect> uvById, Vector3Int min, int sizeX, int sizeY, int sizeZ, bool applyCoordinateTransform)
         {
             var vertices = new List<Vector3>();
             var normals = new List<Vector3>();
@@ -560,75 +882,78 @@ namespace M2V.Editor
                 {
                     for (var x = 0; x < sizeX; x++)
                     {
-                        if (!IsSolid(solids, dims, x, y, z))
+                        var id = GetBlockId(blocks, dims, x, y, z);
+                        if (id <= 0)
                         {
                             continue;
                         }
 
+                        var uvRect = GetUvRect(uvById, id);
+
                         // -X
-                        if (!IsSolid(solids, dims, x - 1, y, z))
+                        if (GetBlockId(blocks, dims, x - 1, y, z) == 0)
                         {
                             AddQuad(vertices, triangles, normals, uvs,
                                 new Vector3(x, y, z),
                                 new Vector3(x, y + 1, z),
                                 new Vector3(x, y + 1, z + 1),
                                 new Vector3(x, y, z + 1),
-                                new Vector3(-1, 0, 0), 1, 1);
+                                new Vector3(-1, 0, 0), uvRect, 1, 1);
                         }
 
                         // +X
-                        if (!IsSolid(solids, dims, x + 1, y, z))
+                        if (GetBlockId(blocks, dims, x + 1, y, z) == 0)
                         {
                             AddQuad(vertices, triangles, normals, uvs,
                                 new Vector3(x + 1, y, z),
                                 new Vector3(x + 1, y, z + 1),
                                 new Vector3(x + 1, y + 1, z + 1),
                                 new Vector3(x + 1, y + 1, z),
-                                new Vector3(1, 0, 0), 1, 1);
+                                new Vector3(1, 0, 0), uvRect, 1, 1);
                         }
 
                         // -Y
-                        if (!IsSolid(solids, dims, x, y - 1, z))
+                        if (GetBlockId(blocks, dims, x, y - 1, z) == 0)
                         {
                             AddQuad(vertices, triangles, normals, uvs,
                                 new Vector3(x, y, z),
                                 new Vector3(x, y, z + 1),
                                 new Vector3(x + 1, y, z + 1),
                                 new Vector3(x + 1, y, z),
-                                new Vector3(0, -1, 0), 1, 1);
+                                new Vector3(0, -1, 0), uvRect, 1, 1);
                         }
 
                         // +Y
-                        if (!IsSolid(solids, dims, x, y + 1, z))
+                        if (GetBlockId(blocks, dims, x, y + 1, z) == 0)
                         {
                             AddQuad(vertices, triangles, normals, uvs,
                                 new Vector3(x, y + 1, z),
                                 new Vector3(x + 1, y + 1, z),
                                 new Vector3(x + 1, y + 1, z + 1),
                                 new Vector3(x, y + 1, z + 1),
-                                new Vector3(0, 1, 0), 1, 1);
+                                new Vector3(0, 1, 0), uvRect, 1, 1);
                         }
 
                         // -Z
-                        if (!IsSolid(solids, dims, x, y, z - 1))
+                        if (GetBlockId(blocks, dims, x, y, z - 1) == 0)
                         {
                             AddQuad(vertices, triangles, normals, uvs,
                                 new Vector3(x, y, z),
                                 new Vector3(x + 1, y, z),
                                 new Vector3(x + 1, y + 1, z),
                                 new Vector3(x, y + 1, z),
-                                new Vector3(0, 0, -1), 1, 1);
+                                new Vector3(0, 0, -1), uvRect, 1, 1);
                         }
 
                         // +Z
-                        if (!IsSolid(solids, dims, x, y, z + 1))
+                        if (GetBlockId(blocks, dims, x, y, z + 1) == 0)
                         {
                             AddQuad(vertices, triangles, normals, uvs,
                                 new Vector3(x, y, z + 1),
                                 new Vector3(x, y + 1, z + 1),
                                 new Vector3(x + 1, y + 1, z + 1),
                                 new Vector3(x + 1, y, z + 1),
-                                new Vector3(0, 0, 1), 1, 1);
+                                new Vector3(0, 0, 1), uvRect, 1, 1);
                         }
                     }
                 }
@@ -678,15 +1003,25 @@ namespace M2V.Editor
             }
         }
 
-        private static bool IsSolid(bool[] solids, int[] dims, int x, int y, int z)
+        private static int GetBlockId(int[] blocks, int[] dims, int x, int y, int z)
         {
             if (x < 0 || y < 0 || z < 0 || x >= dims[0] || y >= dims[1] || z >= dims[2])
             {
-                return false;
+                return 0;
             }
 
             var index = x + dims[0] * (y + dims[1] * z);
-            return solids[index];
+            return blocks[index];
+        }
+
+        private static Rect GetUvRect(List<Rect> uvById, int id)
+        {
+            if (uvById == null || id <= 0 || id >= uvById.Count)
+            {
+                return new Rect(0f, 0f, 1f, 1f);
+            }
+
+            return uvById[id];
         }
 
         private static Vector3 AxisNormal(int axis, int sign)
@@ -699,7 +1034,7 @@ namespace M2V.Editor
             };
         }
 
-        private static void AddQuad(List<Vector3> vertices, List<int> triangles, List<Vector3> normals, List<Vector2> uvs, Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, Vector3 normal, float uvWidth, float uvHeight)
+        private static void AddQuad(List<Vector3> vertices, List<int> triangles, List<Vector3> normals, List<Vector2> uvs, Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, Vector3 normal, Rect uvRect, float uvWidth, float uvHeight)
         {
             var start = vertices.Count;
             vertices.Add(v0);
@@ -710,10 +1045,16 @@ namespace M2V.Editor
             normals.Add(normal);
             normals.Add(normal);
             normals.Add(normal);
-            uvs.Add(new Vector2(0, 0));
-            uvs.Add(new Vector2(uvWidth, 0));
-            uvs.Add(new Vector2(uvWidth, uvHeight));
-            uvs.Add(new Vector2(0, uvHeight));
+
+            var u0 = uvRect.xMin;
+            var v0uv = uvRect.yMin;
+            var u1 = uvRect.xMin + uvRect.width * uvWidth;
+            var v1uv = uvRect.yMin + uvRect.height * uvHeight;
+            uvs.Add(new Vector2(u0, v0uv));
+            uvs.Add(new Vector2(u1, v0uv));
+            uvs.Add(new Vector2(u1, v1uv));
+            uvs.Add(new Vector2(u0, v1uv));
+
             triangles.Add(start);
             triangles.Add(start + 1);
             triangles.Add(start + 2);
@@ -722,10 +1063,10 @@ namespace M2V.Editor
             triangles.Add(start + 3);
         }
 
-        private static void LogSolidSliceStats(bool[] solids, int sizeX, int sizeY, int sizeZ, Vector3Int min)
+        private static void LogSolidSliceStats(int[] blocks, int sizeX, int sizeY, int sizeZ, Vector3Int min)
         {
             const int maxSlices = 5;
-            if (solids == null || solids.Length == 0)
+            if (blocks == null || blocks.Length == 0)
             {
                 return;
             }
@@ -739,7 +1080,7 @@ namespace M2V.Editor
                     for (var x = 0; x < sizeX; x++)
                     {
                         var index = x + sizeX * (y + sizeY * z);
-                        if (solids[index])
+                        if (blocks[index] > 0)
                         {
                             count++;
                         }
@@ -786,6 +1127,21 @@ namespace M2V.Editor
             }
 
             return Mathf.Max(4, bits);
+        }
+
+        private static int GetBitsForSection(int paletteCount, long[] blockStates)
+        {
+            var bits = GetBitsPerBlock(paletteCount);
+            if (blockStates != null && blockStates.Length > 0)
+            {
+                var bitsFromData = (blockStates.Length * 64) / 4096;
+                if (bitsFromData > 0 && bitsFromData <= 32)
+                {
+                    bits = bitsFromData;
+                }
+            }
+
+            return bits;
         }
 
         private static int GetBlockStateIndex(long[] data, int index, int bits)
@@ -913,6 +1269,18 @@ namespace M2V.Editor
             }
 
             return string.Empty;
+        }
+
+        private static void BuildPaletteCaches(List<NbtCompound> palette, out string[] names, out bool[] isAir)
+        {
+            names = new string[palette.Count];
+            isAir = new bool[palette.Count];
+            for (var i = 0; i < palette.Count; i++)
+            {
+                var name = GetBlockName(palette[i]);
+                names[i] = name;
+                isAir[i] = IsAirBlock(name);
+            }
         }
 
         private static bool IsAirBlock(string name)

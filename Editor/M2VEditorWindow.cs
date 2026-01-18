@@ -14,6 +14,7 @@ namespace M2V.Editor
         private const string UxmlPath = "Assets/M2V/Editor/M2VWorldFolderSelect.uxml";
         private const string UssPath = "Assets/M2V/Editor/M2VWorldFolderSelect.uss";
         private const string DirtTexturePath = "Assets/M2V/Editor/dirt.png";
+        private const string DoubleSidedShaderPath = "Assets/M2V/Editor/M2VUnlitDoubleSided.shader";
 
         private Label _statusLabel;
         private ListView _worldList;
@@ -228,15 +229,24 @@ namespace M2V.Editor
                     return;
                 }
 
+                var versionName = TryGetWorldVersionName(path);
+                var jarPath = GetMinecraftVersionJarPath(versionName);
+                if (string.IsNullOrEmpty(jarPath))
+                {
+                    EditorUtility.DisplayDialog("Minecraft2VRChat", "Minecraft version jar not found for this world.", "OK");
+                    return;
+                }
+
                 var options = new M2VMeshGenerator.Options
                 {
-                    UseGreedy = true,
+                    UseGreedy = false,
                     ApplyCoordinateTransform = true,
                     LogSliceStats = false,
-                    LogPaletteBounds = false
+                    LogPaletteBounds = false,
+                    UseTextureAtlas = true
                 };
                 var logChunkOnce = s_logChunkDatOnce;
-                var mesh = M2VMeshGenerator.GenerateMesh(path, dimensionId, min, max, options, ref logChunkOnce, out var message);
+                var mesh = M2VMeshGenerator.GenerateMesh(path, dimensionId, min, max, jarPath, options, ref logChunkOnce, out var message, out var atlasTexture);
                 s_logChunkDatOnce = logChunkOnce;
                 if (mesh == null)
                 {
@@ -268,10 +278,11 @@ namespace M2V.Editor
                 }
 
                 filter.sharedMesh = mesh;
-                ApplyDirtMaterial(renderer);
+                ApplyAtlasMaterial(renderer, atlasTexture);
 
                 Selection.activeObject = go;
-                Debug.Log($"[Minecraft2VRChat] Greedy mesh generated. Vertices: {mesh.vertexCount}");
+                var modeLabel = options.UseGreedy ? "Greedy" : "Naive";
+                Debug.Log($"[Minecraft2VRChat] {modeLabel} mesh generated. Vertices: {mesh.vertexCount}");
             };
 
             rootVisualElement.RegisterCallback<DragUpdatedEvent>(evt =>
@@ -907,8 +918,26 @@ namespace M2V.Editor
             texture.wrapMode = TextureWrapMode.Repeat;
             if (renderer.sharedMaterial == null || renderer.sharedMaterial.mainTexture != texture)
             {
-                var material = new Material(Shader.Find("Unlit/Texture"));
+                var material = new Material(GetDoubleSidedShader());
                 material.mainTexture = texture;
+                renderer.sharedMaterial = material;
+            }
+        }
+
+        private static void ApplyAtlasMaterial(MeshRenderer renderer, Texture2D atlasTexture)
+        {
+            if (atlasTexture == null)
+            {
+                ApplyDirtMaterial(renderer);
+                return;
+            }
+
+            atlasTexture.filterMode = FilterMode.Point;
+            atlasTexture.wrapMode = TextureWrapMode.Repeat;
+            if (renderer.sharedMaterial == null || renderer.sharedMaterial.mainTexture != atlasTexture)
+            {
+                var material = new Material(GetDoubleSidedShader());
+                material.mainTexture = atlasTexture;
                 renderer.sharedMaterial = material;
             }
         }
@@ -1013,6 +1042,63 @@ namespace M2V.Editor
             }
 
             return string.Empty;
+        }
+
+        private static string TryGetWorldVersionName(string worldFolder)
+        {
+            if (string.IsNullOrEmpty(worldFolder))
+            {
+                return string.Empty;
+            }
+
+            var levelDatPath = Path.Combine(worldFolder, "level.dat");
+            if (!File.Exists(levelDatPath))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var nbtFile = new NbtFile();
+                nbtFile.LoadFromFile(levelDatPath);
+                var dataTag = nbtFile.RootTag?["Data"] as NbtCompound;
+                var versionTag = dataTag?["Version"] as NbtCompound;
+                var name = (versionTag?["Name"] as NbtString)?.Value;
+                return name ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string GetMinecraftVersionJarPath(string versionName)
+        {
+            if (string.IsNullOrEmpty(versionName))
+            {
+                return string.Empty;
+            }
+
+            var home = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+            if (string.IsNullOrEmpty(home))
+            {
+                return string.Empty;
+            }
+
+            var versionsRoot = Path.Combine(home, "Library", "Application Support", "minecraft", "versions");
+            var jarPath = Path.Combine(versionsRoot, versionName, $"{versionName}.jar");
+            return File.Exists(jarPath) ? jarPath : string.Empty;
+        }
+
+        private static Shader GetDoubleSidedShader()
+        {
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(DoubleSidedShaderPath);
+            if (shader != null)
+            {
+                return shader;
+            }
+
+            return Shader.Find("Unlit/Texture");
         }
 
         private static bool IsValidWorldFolder(string path)
