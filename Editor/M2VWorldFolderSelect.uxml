@@ -5,10 +5,12 @@
             <Label text="Minecraft World" class="title" />
             <Label text="Select a world folder to import." class="subtitle" />
 
-            <Label text="1. Choose Folder" class="section-title" />
-            <VisualElement class="field-row">
-                <Label name="worldPathLabel" text="No folder selected." class="path-label" />
-                <Button name="browseButton" text="Browse" class="mc-button" />
+            <VisualElement class="section-row">
+                <Label text="Detected Worlds" class="section-title big-title" />
+                <Button name="reloadButton" text="Reload" class="mc-button small-button" />
+            </VisualElement>
+            <VisualElement class="list-frame">
+                <ListView name="worldList" class="world-list" />
             </VisualElement>
 
             <Label name="statusLabel" text="No folder selected." class="status" />
@@ -16,12 +18,34 @@
 
             <VisualElement class="divider" />
 
-            <Label text="2. Actions" class="section-title" />
+            <Label text="2. Select Range" class="section-title" />
+            <VisualElement class="coord-row">
+                <Label text="Min" class="coord-label" />
+                <IntegerField name="minXField" class="coord-field" label="X" />
+                <IntegerField name="minYField" class="coord-field" label="Y" />
+                <IntegerField name="minZField" class="coord-field" label="Z" />
+            </VisualElement>
+            <VisualElement class="coord-row">
+                <Label text="Max" class="coord-label" />
+                <IntegerField name="maxXField" class="coord-field" label="X" />
+                <IntegerField name="maxYField" class="coord-field" label="Y" />
+                <IntegerField name="maxZField" class="coord-field" label="Z" />
+            </VisualElement>
+            <VisualElement class="coord-row">
+                <Label text="Dimension" class="coord-label" />
+                <DropdownField name="dimensionDropdown" class="coord-dropdown" />
+            </VisualElement>
+
+            <Label text="3. Actions" class="section-title" />
             <VisualElement class="button-row">
                 <Button name="openButton" text="Open Folder" class="mc-button" />
                 <Button name="clearButton" text="Clear" class="mc-button" />
-                <Button name="importButton" text="Import" class="mc-button primary" />
+                <Button name="importButton" text="Load Blocks" class="mc-button primary" />
+                <Button name="meshButton" text="Generate Mesh" class="mc-button primary" />
             </VisualElement>
+
+            <Label text="---- or ----" class="or-divider" />
+            <Button name="customImportButton" text="Select Custom Folder..." class="mc-button primary footer-button" />
         </VisualElement>
     </VisualElement>
 </UXML>
