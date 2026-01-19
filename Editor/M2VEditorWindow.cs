@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.Rendering;
 using fNbt;
 using Object = UnityEngine.Object;
 
@@ -15,6 +16,7 @@ namespace M2V.Editor
         private const string UssPath = "Assets/M2V/Editor/M2VWorldFolderSelect.uss";
         private const string DirtTexturePath = "Assets/M2V/Editor/dirt.png";
         private const string DoubleSidedShaderPath = "Assets/M2V/Editor/M2VUnlitDoubleSided.shader";
+        private const string DoubleSidedTransparentShaderPath = "Assets/M2V/Editor/M2VUnlitDoubleSidedTransparent.shader";
 
         private Label _statusLabel;
         private ListView _worldList;
@@ -278,7 +280,7 @@ namespace M2V.Editor
                 }
 
                 filter.sharedMesh = mesh;
-                ApplyAtlasMaterial(renderer, atlasTexture);
+                ApplyAtlasMaterial(renderer, atlasTexture, mesh);
 
                 Selection.activeObject = go;
                 var modeLabel = options.UseGreedy ? "Greedy" : "Naive";
@@ -896,7 +898,7 @@ namespace M2V.Editor
             };
         }
 
-        private static void ApplyDirtMaterial(MeshRenderer renderer)
+        private static void ApplyDirtMaterial(MeshRenderer renderer, Mesh mesh)
         {
             if (renderer == null)
             {
@@ -916,29 +918,89 @@ namespace M2V.Editor
 
             texture.filterMode = FilterMode.Point;
             texture.wrapMode = TextureWrapMode.Repeat;
-            if (renderer.sharedMaterial == null || renderer.sharedMaterial.mainTexture != texture)
+            if (IsUsingScriptableRenderPipeline())
             {
-                var material = new Material(GetDoubleSidedShader());
-                material.mainTexture = texture;
+                if (mesh != null && mesh.subMeshCount > 1)
+                {
+                    renderer.sharedMaterials = new[]
+                    {
+                        CreateCutoutMaterial(texture),
+                        CreateTransparentMaterial(texture)
+                    };
+                }
+                else
+                {
+                    renderer.sharedMaterial = CreateCutoutMaterial(texture);
+                }
+                return;
+            }
+
+            if (mesh != null && mesh.subMeshCount > 1)
+            {
+                var materials = renderer.sharedMaterials;
+                if (materials.Length != 2 || materials[0] == null || materials[1] == null ||
+                    materials[0].shader == null || materials[1].shader == null ||
+                    !materials[0].shader.isSupported || !materials[1].shader.isSupported ||
+                    materials[0].mainTexture != texture || materials[1].mainTexture != texture)
+                {
+                    var cutout = CreateCutoutMaterial(texture);
+                    var transparent = CreateTransparentMaterial(texture);
+                    renderer.sharedMaterials = new[] { cutout, transparent };
+                }
+            }
+            else if (renderer.sharedMaterial == null || renderer.sharedMaterial.shader == null ||
+                     !renderer.sharedMaterial.shader.isSupported || renderer.sharedMaterial.mainTexture != texture)
+            {
+                var material = CreateCutoutMaterial(texture);
                 renderer.sharedMaterial = material;
             }
         }
 
-        private static void ApplyAtlasMaterial(MeshRenderer renderer, Texture2D atlasTexture)
+        private static void ApplyAtlasMaterial(MeshRenderer renderer, Texture2D atlasTexture, Mesh mesh)
         {
             if (atlasTexture == null)
             {
-                ApplyDirtMaterial(renderer);
+                ApplyDirtMaterial(renderer, mesh);
                 return;
             }
 
             atlasTexture.filterMode = FilterMode.Point;
             atlasTexture.wrapMode = TextureWrapMode.Repeat;
-            if (renderer.sharedMaterial == null || renderer.sharedMaterial.mainTexture != atlasTexture)
+            if (IsUsingScriptableRenderPipeline())
             {
-                var material = new Material(GetDoubleSidedShader());
-                material.mainTexture = atlasTexture;
-                renderer.sharedMaterial = material;
+                if (mesh != null && mesh.subMeshCount > 1)
+                {
+                    renderer.sharedMaterials = new[]
+                    {
+                        CreateCutoutMaterial(atlasTexture),
+                        CreateTransparentMaterial(atlasTexture)
+                    };
+                }
+                else
+                {
+                    renderer.sharedMaterial = CreateCutoutMaterial(atlasTexture);
+                }
+                return;
+            }
+
+            if (mesh != null && mesh.subMeshCount > 1)
+            {
+                var materials = renderer.sharedMaterials;
+                if (materials.Length != 2 || materials[0] == null || materials[1] == null ||
+                    materials[0].shader == null || materials[1].shader == null ||
+                    !materials[0].shader.isSupported || !materials[1].shader.isSupported ||
+                    materials[0].mainTexture != atlasTexture || materials[1].mainTexture != atlasTexture)
+                {
+                    var cutoutMaterial = CreateCutoutMaterial(atlasTexture);
+                    var transparentMaterial = CreateTransparentMaterial(atlasTexture);
+                    renderer.sharedMaterials = new[] { cutoutMaterial, transparentMaterial };
+                }
+            }
+            else if (renderer.sharedMaterial == null || renderer.sharedMaterial.shader == null ||
+                     !renderer.sharedMaterial.shader.isSupported || renderer.sharedMaterial.mainTexture != atlasTexture)
+            {
+                var cutoutMaterial = CreateCutoutMaterial(atlasTexture);
+                renderer.sharedMaterial = cutoutMaterial;
             }
         }
 
@@ -1093,12 +1155,126 @@ namespace M2V.Editor
         private static Shader GetDoubleSidedShader()
         {
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(DoubleSidedShaderPath);
-            if (shader != null)
+            if (shader != null && shader.isSupported)
             {
                 return shader;
             }
 
-            return Shader.Find("Unlit/Texture");
+            shader = Shader.Find("M2V/UnlitDoubleSided");
+            if (shader != null && shader.isSupported)
+            {
+                return shader;
+            }
+
+            return FindSupportedShader("Unlit/Texture", "Universal Render Pipeline/Unlit", "HDRP/Unlit");
+        }
+
+        private static Shader GetDoubleSidedTransparentShader()
+        {
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(DoubleSidedTransparentShaderPath);
+            if (shader != null && shader.isSupported)
+            {
+                return shader;
+            }
+
+            shader = Shader.Find("M2V/UnlitDoubleSidedTransparent");
+            if (shader != null && shader.isSupported)
+            {
+                return shader;
+            }
+
+            return FindSupportedShader("Unlit/Transparent", "Universal Render Pipeline/Unlit", "HDRP/Unlit");
+        }
+
+        private static Shader FindSupportedShader(params string[] names)
+        {
+            foreach (var name in names)
+            {
+                var shader = Shader.Find(name);
+                if (shader != null && shader.isSupported)
+                {
+                    return shader;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsUsingScriptableRenderPipeline()
+        {
+            return GraphicsSettings.currentRenderPipeline != null;
+        }
+
+        private static Material CreateCutoutMaterial(Texture2D texture)
+        {
+            if (IsUsingScriptableRenderPipeline())
+            {
+                return CreateUrpUnlitMaterial(texture, transparent: false);
+            }
+
+            return new Material(GetDoubleSidedShader()) { mainTexture = texture };
+        }
+
+        private static Material CreateTransparentMaterial(Texture2D texture)
+        {
+            if (IsUsingScriptableRenderPipeline())
+            {
+                return CreateUrpUnlitMaterial(texture, transparent: true);
+            }
+
+            return new Material(GetDoubleSidedTransparentShader()) { mainTexture = texture };
+        }
+
+        private static Material CreateUrpUnlitMaterial(Texture2D texture, bool transparent)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("HDRP/Unlit");
+            if (shader == null)
+            {
+                return new Material(GetDoubleSidedShader()) { mainTexture = texture };
+            }
+
+            var material = new Material(shader) { mainTexture = texture };
+            if (material.HasProperty("_Cull"))
+            {
+                material.SetInt("_Cull", (int)CullMode.Off);
+            }
+
+            if (transparent)
+            {
+                if (material.HasProperty("_Surface"))
+                {
+                    material.SetFloat("_Surface", 1f);
+                }
+                if (material.HasProperty("_AlphaClip"))
+                {
+                    material.SetFloat("_AlphaClip", 0f);
+                }
+                if (material.HasProperty("_ZWrite"))
+                {
+                    material.SetFloat("_ZWrite", 0f);
+                }
+                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                material.renderQueue = (int)RenderQueue.Transparent;
+            }
+            else
+            {
+                if (material.HasProperty("_Surface"))
+                {
+                    material.SetFloat("_Surface", 0f);
+                }
+                if (material.HasProperty("_AlphaClip"))
+                {
+                    material.SetFloat("_AlphaClip", 1f);
+                }
+                if (material.HasProperty("_Cutoff"))
+                {
+                    material.SetFloat("_Cutoff", 0.5f);
+                }
+                material.EnableKeyword("_ALPHATEST_ON");
+                material.renderQueue = (int)RenderQueue.AlphaTest;
+            }
+
+            return material;
         }
 
         private static bool IsValidWorldFolder(string path)

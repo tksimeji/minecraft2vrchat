@@ -3,15 +3,15 @@ Shader "M2V/UnlitDoubleSided"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
+        _Cutoff ("Alpha Cutoff", Range(0,1)) = 0.5
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "Queue"="Geometry" }
+        Tags { "RenderType"="TransparentCutout" "Queue"="AlphaTest" }
         LOD 100
         Cull Off
         Lighting Off
         ZWrite On
-        Blend Off
 
         Pass
         {
@@ -34,6 +34,7 @@ Shader "M2V/UnlitDoubleSided"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            float _Cutoff;
 
             v2f vert (appdata v)
             {
@@ -45,7 +46,9 @@ Shader "M2V/UnlitDoubleSided"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                return tex2D(_MainTex, i.uv);
+                fixed4 col = tex2D(_MainTex, i.uv);
+                clip(col.a - _Cutoff);
+                return col;
             }
             ENDCG
         }
