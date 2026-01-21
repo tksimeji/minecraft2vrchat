@@ -6,9 +6,9 @@ using M2V.Editor.World;
 using UnityEngine;
 using BlockState = M2V.Editor.World.Block.BlockState;
 
-namespace M2V.Editor.MeshGeneration
+namespace M2V.Editor.Meshing
 {
-    internal sealed class WorldBlockStateSource : IBlockStateSource
+    internal sealed class WorldBlockSource : IBlockStateSource
     {
         public long CountBlocksInRange(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max,
             ref bool logChunkOnce)
@@ -42,8 +42,8 @@ namespace M2V.Editor.MeshGeneration
         }
 
         public bool FillBlockStateIds(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max,
-            int[] blocks, int sizeX, int sizeY, int sizeZ, List<BlockStateKey> states, ref bool logChunkOnce,
-            bool logPaletteBounds)
+            int[] blocks, int[] biomes, int sizeX, int sizeY, int sizeZ, List<BlockStateKey> states,
+            BiomeRegistry biomeRegistry, ref bool logChunkOnce, bool logPaletteBounds)
         {
             var world = GetWorld(worldFolder);
             if (world == null)
@@ -66,8 +66,8 @@ namespace M2V.Editor.MeshGeneration
             {
                 for (var cz = chunkMinZ; cz <= chunkMaxZ; cz++)
                 {
-                    FillBlockStateIdsInChunk(world, dimensionId, cx, cz, min, max, blocks, sizeX, sizeY, sizeZ, states,
-                        ref logChunkOnce, logPaletteBounds);
+                    FillBlockStateIdsInChunk(world, dimensionId, cx, cz, min, max, blocks, biomes, sizeX, sizeY, sizeZ,
+                        states, biomeRegistry, ref logChunkOnce, logPaletteBounds);
                 }
             }
 
@@ -168,8 +168,8 @@ namespace M2V.Editor.MeshGeneration
         }
 
         private static void FillBlockStateIdsInChunk(World.World world, string dimensionId, int chunkX, int chunkZ,
-            Vector3Int min, Vector3Int max, int[] blocks, int sizeX, int sizeY, int sizeZ, List<BlockStateKey> states,
-            ref bool logChunkOnce, bool logPaletteBounds)
+            Vector3Int min, Vector3Int max, int[] blocks, int[] biomes, int sizeX, int sizeY, int sizeZ,
+            List<BlockStateKey> states, BiomeRegistry biomeRegistry, ref bool logChunkOnce, bool logPaletteBounds)
         {
             var chunk = ReadChunk(world, dimensionId, chunkX, chunkZ);
             if (chunk == null)
@@ -209,6 +209,12 @@ namespace M2V.Editor.MeshGeneration
                 if (!TryGetSectionBlockData(section, out var palette, out var blockStates))
                 {
                     continue;
+                }
+
+                if (biomes != null && biomeRegistry != null)
+                {
+                    FillBiomeIdsInSection(section, biomeRegistry, chunkMinX, chunkMinZ, sectionMinY, min, max, biomes,
+                        sizeX, sizeY, sizeZ);
                 }
 
                 var paletteIds = new int[palette.Count];
@@ -294,6 +300,83 @@ namespace M2V.Editor.MeshGeneration
                 {
                     Debug.LogWarning(
                         $"[Minecraft2VRChat] Palette index out of range: {invalidCount}/{totalCount} (palette {paletteIds.Length}, bits {bits}, chunk {chunkX},{chunkZ}, sectionY {sectionY}).");
+                }
+            }
+        }
+
+        private static void FillBiomeIdsInSection(Chunk.Section section, BiomeRegistry biomeRegistry, int chunkMinX,
+            int chunkMinZ, int sectionMinY, Vector3Int min, Vector3Int max, int[] biomes, int sizeX, int sizeY,
+            int sizeZ)
+        {
+            if (!TryGetSectionBiomeData(section, out var biomePalette, out var biomeData) || biomePalette == null ||
+                biomePalette.Count == 0)
+            {
+                return;
+            }
+
+            var paletteIndices = new int[biomePalette.Count];
+            for (var i = 0; i < biomePalette.Count; i++)
+            {
+                paletteIndices[i] = biomeRegistry.GetBiomeIndex(biomePalette[i]);
+            }
+
+            var bits = GetBitsForBiomeSection(biomePalette.Count, biomeData);
+            var xMin = Mathf.Max(min.x, chunkMinX);
+            var xMax = Mathf.Min(max.x, chunkMinX + 15);
+            var zMin = Mathf.Max(min.z, chunkMinZ);
+            var zMax = Mathf.Min(max.z, chunkMinZ + 15);
+            var yMin = Mathf.Max(min.y, sectionMinY);
+            var yMax = Mathf.Min(max.y, sectionMinY + 15);
+
+            if (bits == 0)
+            {
+                var biomeIndex = paletteIndices[0];
+                for (var y = yMin; y <= yMax; y++)
+                {
+                    for (var z = zMin; z <= zMax; z++)
+                    {
+                        for (var x = xMin; x <= xMax; x++)
+                        {
+                            var outIndex = (x - min.x) + sizeX * ((y - min.y) + sizeY * (z - min.z));
+                            if (outIndex >= 0 && outIndex < biomes.Length)
+                            {
+                                biomes[outIndex] = biomeIndex;
+                            }
+                        }
+                    }
+                }
+
+                return;
+            }
+
+            if (biomeData == null || biomeData.Length == 0)
+            {
+                return;
+            }
+
+            for (var y = yMin; y <= yMax; y++)
+            {
+                var localY = y - sectionMinY;
+                var biomeY = localY >> 2;
+                for (var z = zMin; z <= zMax; z++)
+                {
+                    var localZ = z - chunkMinZ;
+                    var biomeZ = localZ >> 2;
+                    for (var x = xMin; x <= xMax; x++)
+                    {
+                        var localX = x - chunkMinX;
+                        var biomeX = localX >> 2;
+                        var biomeIndex = (biomeY << 4) | (biomeZ << 2) | biomeX;
+                        var paletteIndex = GetPackedIndex(biomeData, biomeIndex, bits);
+                        var resolvedIndex = (paletteIndex >= 0 && paletteIndex < paletteIndices.Length)
+                            ? paletteIndices[paletteIndex]
+                            : biomeRegistry.PlainsIndex;
+                        var outIndex = (x - min.x) + sizeX * ((y - min.y) + sizeY * (z - min.z));
+                        if (outIndex >= 0 && outIndex < biomes.Length)
+                        {
+                            biomes[outIndex] = resolvedIndex;
+                        }
+                    }
                 }
             }
         }
@@ -427,9 +510,14 @@ namespace M2V.Editor.MeshGeneration
                 return 0;
             }
 
+            return GetPackedIndex(blockStates, index, bits);
+        }
+
+        private static int GetPackedIndex(long[] data, int index, int bits)
+        {
             var valuesPerLong = 64 / bits;
             var longIndex = index / valuesPerLong;
-            if (longIndex < 0 || longIndex >= blockStates.Length)
+            if (longIndex < 0 || longIndex >= data.Length)
             {
                 return 0;
             }
@@ -437,7 +525,7 @@ namespace M2V.Editor.MeshGeneration
             var valueIndex = index % valuesPerLong;
             var shift = valueIndex * bits;
             var mask = (1L << bits) - 1L;
-            return (int)((blockStates[longIndex] >> shift) & mask);
+            return (int)((data[longIndex] >> shift) & mask);
         }
 
         private static bool TryGetSectionY(Chunk.Section section, out int sectionY)
@@ -465,6 +553,42 @@ namespace M2V.Editor.MeshGeneration
             palette = section.BlockStatePalette;
             blockStates = section.BlockStateData;
             return palette != null;
+        }
+
+        private static bool TryGetSectionBiomeData(Chunk.Section section, out IReadOnlyList<string> palette,
+            out long[] data)
+        {
+            palette = null;
+            data = null;
+            if (section == null)
+            {
+                return false;
+            }
+
+            palette = section.BiomePalette;
+            data = section.BiomeData;
+            return palette != null;
+        }
+
+        private static int GetBitsForBiomeSection(int paletteSize, long[] data)
+        {
+            if (paletteSize <= 1)
+            {
+                return 0;
+            }
+
+            var bits = 1;
+            while ((1 << bits) < paletteSize)
+            {
+                bits++;
+            }
+
+            if (data != null && data.Length > bits)
+            {
+                bits = data.Length;
+            }
+
+            return bits;
         }
 
         private static long GetIntersection(int chunkMinX, int chunkMinZ, int sectionMinY, Vector3Int min,

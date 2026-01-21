@@ -381,7 +381,8 @@ namespace M2V.Editor.Model
                 Uv = Uv,
                 Texture = Texture,
                 CullFace = CullFace,
-                Rotation = Rotation
+                Rotation = Rotation,
+                TintIndex = TintIndex
             };
         }
     }

@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace M2V.Editor.MeshGeneration
+namespace M2V.Editor.Meshing
 {
-    internal sealed class MeshGenerationResult
+    internal sealed class MeshingResult
     {
         internal Mesh Mesh { get; set; }
         internal Texture2D AtlasTexture { get; set; }

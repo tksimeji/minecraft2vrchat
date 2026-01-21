@@ -5,17 +5,16 @@ using System.IO.Compression;
 using M2V.Editor.Model;
 using UnityEngine;
 
-namespace M2V.Editor.MeshGeneration
+namespace M2V.Editor.Meshing
 {
-    internal sealed class MeshGenerationUseCase
+    internal sealed class MeshingUseCase
     {
         private readonly IBlockStateSource _blockStateSource;
         private readonly IMeshBuilder _meshBuilder;
         private readonly ITextureAtlasBuilder _atlasBuilder;
         private readonly Func<ZipArchive, IModelRepository> _modelRepositoryFactory;
 
-        internal MeshGenerationUseCase(IBlockStateSource blockStateSource, IMeshBuilder meshBuilder,
-            ITextureAtlasBuilder atlasBuilder, Func<ZipArchive, IModelRepository> modelRepositoryFactory)
+        internal MeshingUseCase(IBlockStateSource blockStateSource, IMeshBuilder meshBuilder, ITextureAtlasBuilder atlasBuilder, Func<ZipArchive, IModelRepository> modelRepositoryFactory)
         {
             _blockStateSource = blockStateSource;
             _meshBuilder = meshBuilder;
@@ -23,9 +22,9 @@ namespace M2V.Editor.MeshGeneration
             _modelRepositoryFactory = modelRepositoryFactory;
         }
 
-        internal MeshGenerationResult Execute(MeshGenerationRequest request)
+        internal MeshingResult Execute(MeshingRequest request)
         {
-            var result = new MeshGenerationResult
+            var result = new MeshingResult
             {
                 Message = string.Empty,
                 LogChunkOnce = request.LogChunkOnce
@@ -53,14 +52,17 @@ namespace M2V.Editor.MeshGeneration
                 return result;
             }
 
+            using var zip = ZipFile.OpenRead(request.MinecraftJarPath);
+            var biomeRegistry = new BiomeRegistry(zip);
+
             var blockStates = new List<BlockStateKey> { BlockStateKey.Empty };
             var blocks = new int[volume];
+            var biomes = new int[volume];
+            Array.Fill(biomes, biomeRegistry.PlainsIndex);
             var logChunkOnce = result.LogChunkOnce;
-            if (!_blockStateSource.FillBlockStateIds(request.WorldFolder, request.DimensionId, request.Min, request.Max,
-                    blocks, sizeX, sizeY, sizeZ, blockStates, ref logChunkOnce, request.Options.LogPaletteBounds))
+            if (!_blockStateSource.FillBlockStateIds(request.WorldFolder, request.DimensionId, request.Min, request.Max, blocks, biomes, sizeX, sizeY, sizeZ, blockStates, biomeRegistry, ref logChunkOnce, request.Options.LogPaletteBounds))
             {
-                result.Message =
-                    "[Minecraft2VRChat] Failed to read blocks for meshing (region folder missing or read failure).";
+                result.Message = "[Minecraft2VRChat] Failed to read blocks for meshing (region folder missing or read failure).";
                 result.LogChunkOnce = logChunkOnce;
                 return result;
             }
@@ -72,23 +74,22 @@ namespace M2V.Editor.MeshGeneration
                 LogSolidSliceStats(blocks, sizeX, sizeY, sizeZ, request.Min);
             }
 
-            using var zip = ZipFile.OpenRead(request.MinecraftJarPath);
             var repository = _modelRepositoryFactory(zip);
             var modelCache = repository.BuildBlockModels(blockStates);
             var fullCubeById = repository.BuildFullCubeFlags(modelCache);
             var texturePaths = repository.CollectTexturePaths(modelCache);
 
-            result.AtlasTexture =
-                _atlasBuilder.BuildTextureAtlasFromTextures(zip, texturePaths, out var uvByTexture,
-                    out var alphaByTexture);
+            var tintResolver = new BlockTintResolver(zip, biomeRegistry);
+            var tintByBlock = tintResolver.BuildTintByBlock(blocks, sizeX, sizeY, sizeZ, blockStates, biomes);
+
+            result.AtlasTexture = _atlasBuilder.BuildTextureAtlasFromTextures(zip, texturePaths, out var uvByTexture, out var alphaByTexture);
             if (result.AtlasTexture == null)
             {
                 result.Message = "[Minecraft2VRChat] Failed to build texture atlas from models.";
                 return result;
             }
 
-            result.Mesh = _meshBuilder.BuildModelMesh(blocks, sizeX, sizeY, sizeZ, request.Min, modelCache,
-                fullCubeById, uvByTexture, alphaByTexture, request.Options.ApplyCoordinateTransform);
+            result.Mesh = _meshBuilder.BuildModelMesh(blocks, sizeX, sizeY, sizeZ, request.Min, modelCache, fullCubeById, tintByBlock, uvByTexture, alphaByTexture, request.Options.ApplyCoordinateTransform);
 
             if (result.Mesh == null)
             {

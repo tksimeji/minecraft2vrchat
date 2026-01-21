@@ -4,7 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using UnityEngine;
 
-namespace M2V.Editor.MeshGeneration
+namespace M2V.Editor.Meshing
 {
     internal sealed class TextureAtlasBuilder : ITextureAtlasBuilder
     {

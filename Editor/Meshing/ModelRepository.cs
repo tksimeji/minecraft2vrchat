@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.IO.Compression;
 using M2V.Editor.Model;
 
-namespace M2V.Editor.MeshGeneration
+namespace M2V.Editor.Meshing
 {
     internal sealed class ModelRepository : IModelRepository
     {

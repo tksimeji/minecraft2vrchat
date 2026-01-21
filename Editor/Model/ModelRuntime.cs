@@ -142,6 +142,7 @@ namespace M2V.Editor.Model
         internal string Texture;
         internal string CullFace;
         internal int Rotation;
+        internal int? TintIndex;
     }
 
     internal enum Direction

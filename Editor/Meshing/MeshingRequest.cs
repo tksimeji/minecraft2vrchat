@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace M2V.Editor.MeshGeneration
+namespace M2V.Editor.Meshing
 {
-    internal sealed class MeshGenerationRequest
+    internal sealed class MeshingRequest
     {
         internal string WorldFolder { get; set; }
         internal string DimensionId { get; set; }

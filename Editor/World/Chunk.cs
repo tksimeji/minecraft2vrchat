@@ -60,6 +60,36 @@ namespace M2V.Editor.World
                 return (palette, (blockStates["data"] as NbtLongArray)?.Value);
             }
 
+            private static (List<string>?, long[]?) ReadBiomeData(NbtCompound sectionNbt)
+            {
+                if (sectionNbt["biomes"] is not NbtCompound biomes)
+                {
+                    return (null, null);
+                }
+
+                var paletteTag = biomes["palette"] as NbtList;
+                if (paletteTag == null || paletteTag.Count == 0)
+                {
+                    return (null, null);
+                }
+
+                var palette = new List<string>(paletteTag.Count);
+                foreach (var entry in paletteTag)
+                {
+                    if (entry is NbtString str)
+                    {
+                        palette.Add(str.Value ?? string.Empty);
+                    }
+                }
+
+                if (palette.Count == 0)
+                {
+                    return (null, null);
+                }
+
+                return (palette, (biomes["data"] as NbtLongArray)?.Value);
+            }
+
             private static List<BlockState> ReadBlockStatePalette(NbtList paletteTag)
             {
                 var list = new List<BlockState>(paletteTag.Count);
@@ -77,16 +107,23 @@ namespace M2V.Editor.World
             public int Y { get; }
             private readonly List<BlockState>? _blockStatePalette;
             private readonly long[]? _blockStateData;
+            private readonly List<string>? _biomePalette;
+            private readonly long[]? _biomeData;
 
             internal Section(NbtCompound sectionNbt)
             {
                 Y = sectionNbt["Y"] is NbtByte yTag ? unchecked((sbyte)yTag.Value) : 0;
                 (_blockStatePalette, _blockStateData) = ReadBlockStateData(sectionNbt);
+                (_biomePalette, _biomeData) = ReadBiomeData(sectionNbt);
             }
 
             public IReadOnlyList<BlockState>? BlockStatePalette => _blockStatePalette;
 
             public long[]? BlockStateData => _blockStateData;
+
+            public IReadOnlyList<string>? BiomePalette => _biomePalette;
+
+            public long[]? BiomeData => _biomeData;
         }
     }
 }

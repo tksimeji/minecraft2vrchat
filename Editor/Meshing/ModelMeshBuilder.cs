@@ -2,17 +2,19 @@ using System.Collections.Generic;
 using M2V.Editor.Model;
 using UnityEngine;
 
-namespace M2V.Editor.MeshGeneration
+namespace M2V.Editor.Meshing
 {
     internal sealed class ModelMeshBuilder : IMeshBuilder
     {
         public Mesh BuildModelMesh(int[] blocks, int sizeX, int sizeY, int sizeZ, Vector3Int min,
-            List<List<ModelPlacement>> modelCache, List<bool> fullCubeById, Dictionary<string, Rect> uvByTexture,
-            Dictionary<string, TextureAlphaMode> alphaByTexture, bool applyCoordinateTransform)
+            List<List<ModelPlacement>> modelCache, List<bool> fullCubeById, IReadOnlyList<Color32> tintByBlock,
+            Dictionary<string, Rect> uvByTexture, Dictionary<string, TextureAlphaMode> alphaByTexture,
+            bool applyCoordinateTransform)
         {
             var vertices = new List<Vector3>();
             var normals = new List<Vector3>();
             var uvs = new List<Vector2>();
+            var colors = new List<Color32>();
             var trianglesSolid = new List<int>();
             var trianglesTranslucent = new List<int>();
 
@@ -36,10 +38,12 @@ namespace M2V.Editor.MeshGeneration
                             continue;
                         }
 
+                        var blockIndex = x + dims[0] * (y + dims[1] * z);
                         foreach (var instance in models)
                         {
-                            EmitModel(instance, x, y, z, blocks, dims, fullCubeById, vertices, normals, uvs,
-                                trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture);
+                            EmitModel(instance, id, blockIndex, x, y, z, blocks, dims, fullCubeById, tintByBlock,
+                                vertices, normals, uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture,
+                                alphaByTexture);
                         }
                     }
                 }
@@ -62,6 +66,10 @@ namespace M2V.Editor.MeshGeneration
             mesh.SetVertices(vertices);
             mesh.SetNormals(normals);
             mesh.SetUVs(0, uvs);
+            if (colors.Count == vertices.Count)
+            {
+                mesh.colors32 = colors.ToArray();
+            }
 
             if (trianglesTranslucent.Count > 0)
             {
@@ -79,10 +87,12 @@ namespace M2V.Editor.MeshGeneration
             return mesh;
         }
 
-        private static void EmitModel(ModelPlacement instance, int blockX, int blockY, int blockZ, int[] blocks,
+        private static void EmitModel(ModelPlacement instance, int blockId, int blockIndex, int blockX, int blockY, int blockZ, int[] blocks,
             int[] dims,
             List<bool> fullCubeById,
-            List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> trianglesSolid,
+            IReadOnlyList<Color32> tintByBlock,
+            List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<Color32> colors,
+            List<int> trianglesSolid,
             List<int> trianglesTranslucent,
             Dictionary<string, Rect> uvByTexture, Dictionary<string, TextureAlphaMode> alphaByTexture)
         {
@@ -153,11 +163,12 @@ namespace M2V.Editor.MeshGeneration
                     }
 
                     var quad = element.GetFaceQuad(dir, corners);
-                    var normal =
-                        DirectionToNormal(RotateDirection(dir, instance.RotateX, instance.RotateY, instance.RotateZ));
+                    var normal = DirectionToNormal(RotateDirection(dir, instance.RotateX, instance.RotateY,
+                        instance.RotateZ));
                     var texturePath = instance.Model.ResolveTexture(face.Texture);
                     var uvRect = ResolveUvRect(texturePath, face, instance, uvByTexture, element, dir);
                     var alphaMode = ResolveAlphaMode(instance, texturePath, alphaByTexture);
+                    var tint = ResolveTint(face, blockIndex, tintByBlock);
                     var targetTriangles = alphaMode == TextureAlphaMode.Translucent
                         ? trianglesTranslucent
                         : trianglesSolid;
@@ -166,7 +177,7 @@ namespace M2V.Editor.MeshGeneration
                         quad[1] + blockOffset,
                         quad[2] + blockOffset,
                         quad[3] + blockOffset,
-                        normal, uvRect, 1f, 1f);
+                        normal, uvRect, tint, colors);
                 }
             }
         }
@@ -198,9 +209,8 @@ namespace M2V.Editor.MeshGeneration
 
             if (instance != null && instance.UvLock)
             {
-                rot = NormalizeRotation(rot +
-                                        ComputeUvLockRotation(dir, instance.RotateX, instance.RotateY,
-                                            instance.RotateZ));
+                rot = NormalizeRotation(rot + ComputeUvLockRotation(dir, instance.RotateX, instance.RotateY,
+                    instance.RotateZ));
             }
 
             if (rot != 0)
@@ -402,9 +412,9 @@ namespace M2V.Editor.MeshGeneration
             return blocks[x + dims[0] * (y + dims[1] * z)];
         }
 
-        private static void AddQuad(List<Vector3> vertices, List<int> triangles, List<Vector3> normals,
-            List<Vector2> uvs,
-            Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, Vector3 normal, Rect uvRect, float uvW, float uvH)
+        private static void AddQuad(List<Vector3> vertices, List<int> triangles, List<Vector3> normals, List<Vector2> uvs,
+            Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, Vector3 normal, Rect uvRect, Color32 tint,
+            List<Color32> colors)
         {
             var index = vertices.Count;
             vertices.Add(v0);
@@ -415,6 +425,11 @@ namespace M2V.Editor.MeshGeneration
             normals.Add(normal);
             normals.Add(normal);
             normals.Add(normal);
+
+            colors.Add(tint);
+            colors.Add(tint);
+            colors.Add(tint);
+            colors.Add(tint);
 
             uvs.Add(new Vector2(uvRect.xMin, uvRect.yMin));
             uvs.Add(new Vector2(uvRect.xMax, uvRect.yMin));
@@ -429,6 +444,21 @@ namespace M2V.Editor.MeshGeneration
             triangles.Add(index + 0);
         }
 
+        private static Color32 ResolveTint(ModelFace face, int blockIndex, IReadOnlyList<Color32> tintByBlock)
+        {
+            if (face?.TintIndex == null)
+            {
+                return new Color32(255, 255, 255, 255);
+            }
+
+            if (tintByBlock == null || blockIndex < 0 || blockIndex >= tintByBlock.Count)
+            {
+                return new Color32(255, 255, 255, 255);
+            }
+
+            return tintByBlock[blockIndex];
+        }
+
         private static void ApplyCoordinateTransform(List<Vector3> vertices, List<Vector3> normals, List<int> triangles,
             Vector3Int min, bool applyTransform)
         {
@@ -438,7 +468,6 @@ namespace M2V.Editor.MeshGeneration
                 {
                     vertices[i] += min;
                 }
-
                 return;
             }
 
