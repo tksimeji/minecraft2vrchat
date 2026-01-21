@@ -2,7 +2,7 @@
 <UXML xmlns="UnityEngine.UIElements">
     <VisualElement name="root" class="minecraft-root">
         <VisualElement class="panel">
-            <Label text="Minecraft World" class="title" />
+            <Label text="M2V" class="title" />
             <Label text="Select a world folder to import." class="subtitle" />
 
             <VisualElement class="section-row">
@@ -33,7 +33,11 @@
             </VisualElement>
             <VisualElement class="coord-row">
                 <Label text="Dimension" class="coord-label" />
-                <DropdownField name="dimensionDropdown" class="coord-dropdown" />
+                <VisualElement class="dimension-group">
+                    <RadioButton name="dimensionOverworld" text="Overworld" class="dimension-radio" />
+                    <RadioButton name="dimensionNether" text="Nether" class="dimension-radio" />
+                    <RadioButton name="dimensionEnd" text="End" class="dimension-radio" />
+                </VisualElement>
             </VisualElement>
 
             <Label text="3. Actions" class="section-title" />
