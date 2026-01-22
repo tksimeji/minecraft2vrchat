@@ -1,55 +1,146 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UXML xmlns="UnityEngine.UIElements">
     <VisualElement name="root" class="minecraft-root">
-        <VisualElement class="panel">
-            <Label text="M2V" class="title" />
-            <Label text="Select a world folder to import." class="subtitle" />
-
-            <VisualElement class="section-row">
-                <Label text="Detected Worlds" class="section-title big-title" />
-                <Button name="reloadButton" text="Reload" class="mc-button small-button" />
-            </VisualElement>
-            <VisualElement class="list-frame">
-                <ListView name="worldList" class="world-list" />
+        <VisualElement class="launcher-shell">
+            <VisualElement class="launcher-topbar">
+                <Label text="ENGLISH - US" class="topbar-item" />
+                <VisualElement class="topbar-spacer" />
+                <Label text="STEVE" class="topbar-item" />
+                <Label text="HELP" class="topbar-item" />
             </VisualElement>
 
-            <Label name="statusLabel" text="No folder selected." class="status" />
-            <Label text="Tip: Drag &amp; drop a folder here" class="hint" />
-
-            <VisualElement class="divider" />
-
-            <Label text="2. Select Range" class="section-title" />
-            <VisualElement class="coord-row">
-                <Label text="Min" class="coord-label" />
-                <IntegerField name="minXField" class="coord-field" label="X" />
-                <IntegerField name="minYField" class="coord-field" label="Y" />
-                <IntegerField name="minZField" class="coord-field" label="Z" />
+            <VisualElement class="launcher-header">
+                <Label text="MINECRAFT2VRCHAT" class="title" />
+                <Label text="Java World Importer" class="subtitle" />
             </VisualElement>
-            <VisualElement class="coord-row">
-                <Label text="Max" class="coord-label" />
-                <IntegerField name="maxXField" class="coord-field" label="X" />
-                <IntegerField name="maxYField" class="coord-field" label="Y" />
-                <IntegerField name="maxZField" class="coord-field" label="Z" />
+
+            <VisualElement class="launcher-tabs">
+                <Label name="stepWorld" text="Worlds" class="tab tab-active" />
+                <Label name="stepRange" text="Range" class="tab" />
+                <Label name="stepGenerate" text="Generate" class="tab" />
             </VisualElement>
-            <VisualElement class="coord-row">
-                <Label text="Dimension" class="coord-label" />
-                <VisualElement class="dimension-group">
-                    <RadioButton name="dimensionOverworld" text="Overworld" class="dimension-radio" />
-                    <RadioButton name="dimensionNether" text="Nether" class="dimension-radio" />
-                    <RadioButton name="dimensionEnd" text="End" class="dimension-radio" />
+
+            <VisualElement class="launcher-body">
+                <VisualElement name="pageWorld" class="page">
+                    <VisualElement class="panel">
+                        <VisualElement class="section-row">
+                            <Label text="Worlds" class="section-title big-title" />
+                            <Button name="reloadButton" text="Reload" class="mc-button small-button" />
+                        </VisualElement>
+                        <VisualElement class="hero">
+                            <Label text="Minecraft 2 VRChat importer" class="hero-caption" />
+                        </VisualElement>
+                        <VisualElement class="list-frame">
+                            <ListView name="worldList" class="world-list" />
+                        </VisualElement>
+
+                        <Label name="statusLabel" text="No folder selected." class="status" />
+                        <Label text="Tip: Drag &amp; drop a world folder here" class="hint" />
+
+                        <VisualElement class="divider" />
+                        <VisualElement class="wizard-spacer" />
+                        <VisualElement class="button-row wizard-footer">
+                            <Button name="customImportButton" text="Select Custom Folder..." class="mc-button" />
+                            <Button name="nextButtonWorld" text="Next" class="mc-button primary" />
+                        </VisualElement>
+                    </VisualElement>
+                </VisualElement>
+
+                <VisualElement name="pageRange" class="page">
+                    <VisualElement class="panel">
+                        <VisualElement class="hero hero-compact">
+                            <Label text="Select a coordinate range" class="hero-caption" />
+                        </VisualElement>
+                        <Label text="Range" class="section-title" />
+                        <VisualElement class="coord-row">
+                            <Label text="Min" class="coord-label" />
+                            <IntegerField name="minXField" class="coord-field" label="X" />
+                            <IntegerField name="minYField" class="coord-field" label="Y" />
+                            <IntegerField name="minZField" class="coord-field" label="Z" />
+                        </VisualElement>
+                        <VisualElement class="coord-row">
+                            <Label text="Max" class="coord-label" />
+                            <IntegerField name="maxXField" class="coord-field" label="X" />
+                            <IntegerField name="maxYField" class="coord-field" label="Y" />
+                            <IntegerField name="maxZField" class="coord-field" label="Z" />
+                        </VisualElement>
+                        <VisualElement class="coord-row">
+                            <Label text="Dimension" class="coord-label" />
+                            <VisualElement class="dimension-group">
+                                <RadioButton name="dimensionOverworld" text="Overworld" class="dimension-radio" />
+                                <RadioButton name="dimensionNether" text="Nether" class="dimension-radio" />
+                                <RadioButton name="dimensionEnd" text="End" class="dimension-radio" />
+                            </VisualElement>
+                        </VisualElement>
+
+                        <VisualElement class="divider" />
+                        <VisualElement class="wizard-spacer" />
+                        <VisualElement class="button-row wizard-footer">
+                            <Button name="backButtonRange" text="Back" class="mc-button" />
+                            <Button name="nextButtonRange" text="Next" class="mc-button primary" />
+                        </VisualElement>
+                    </VisualElement>
+                </VisualElement>
+
+                <VisualElement name="pageGenerate" class="page">
+                    <VisualElement class="panel">
+                        <VisualElement class="hero hero-compact">
+                            <Label text="Ready to generate" class="hero-caption" />
+                        </VisualElement>
+                        <Label text="Generate" class="section-title" />
+                        <Label text="Run import and mesh generation for the selected world." class="hint" />
+
+                        <VisualElement class="pack-section">
+                            <Label text="Optional packs" class="section-title" />
+                            <Label text="Resource packs replace textures/models. Data packs override biome data." class="hint" />
+                            <VisualElement class="pack-entry">
+                                <Label text="Resource Pack" class="pack-title" />
+                                <Label name="resourcePackValue" text="Using Minecraft jar assets." class="pack-value" />
+                                <VisualElement class="pack-actions">
+                                    <Button name="resourcePackZipButton" text="Choose .zip" class="mc-button small-button" />
+                                    <Button name="resourcePackFolderButton" text="Choose folder" class="mc-button small-button" />
+                                    <Button name="resourcePackClearButton" text="Clear" class="mc-button small-button" />
+                                </VisualElement>
+                            </VisualElement>
+                            <VisualElement class="pack-entry">
+                                <Label text="Data Pack" class="pack-title" />
+                                <Label name="dataPackValue" text="Using Minecraft jar data." class="pack-value" />
+                                <VisualElement class="pack-actions">
+                                    <Button name="dataPackZipButton" text="Choose .zip" class="mc-button small-button" />
+                                    <Button name="dataPackFolderButton" text="Choose folder" class="mc-button small-button" />
+                                    <Button name="dataPackClearButton" text="Clear" class="mc-button small-button" />
+                                </VisualElement>
+                            </VisualElement>
+                        </VisualElement>
+
+                        <VisualElement class="button-row">
+                            <Button name="openButton" text="Open Folder" class="mc-button" />
+                            <Button name="clearButton" text="Clear" class="mc-button" />
+                        </VisualElement>
+
+                        <VisualElement class="play-bar">
+                            <Label text="Ready to build" class="play-caption" />
+                            <Button name="meshButton" text="GENERATE" class="play-button" />
+                        </VisualElement>
+
+                        <VisualElement class="divider" />
+                        <VisualElement class="wizard-spacer" />
+                        <VisualElement class="button-row wizard-footer">
+                            <Button name="backButtonGenerate" text="Back" class="mc-button" />
+                        </VisualElement>
+                    </VisualElement>
                 </VisualElement>
             </VisualElement>
 
-            <Label text="3. Actions" class="section-title" />
-            <VisualElement class="button-row">
-                <Button name="openButton" text="Open Folder" class="mc-button" />
-                <Button name="clearButton" text="Clear" class="mc-button" />
-                <Button name="importButton" text="Load Blocks" class="mc-button primary" />
-                <Button name="meshButton" text="Generate Mesh" class="mc-button primary" />
+            <VisualElement name="loadingOverlay" class="loading-overlay">
+                <VisualElement class="loading-panel">
+                    <Label text="Loading..." class="loading-title" />
+                    <Label name="loadingStatusLabel" text="Preparing" class="loading-status" />
+                    <VisualElement class="loading-bar-frame">
+                        <VisualElement name="loadingBar" class="loading-bar" />
+                    </VisualElement>
+                </VisualElement>
             </VisualElement>
-
-            <Label text="---- or ----" class="or-divider" />
-            <Button name="customImportButton" text="Select Custom Folder..." class="mc-button primary footer-button" />
         </VisualElement>
     </VisualElement>
 </UXML>

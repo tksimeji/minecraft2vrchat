@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using M2V.Editor.Model;
 using UnityEngine;
 
@@ -22,12 +21,12 @@ namespace M2V.Editor.Meshing
         private readonly Texture2D _waterMap;
         private readonly BiomeRegistry _biomeRegistry;
 
-        internal BlockTintResolver(ZipArchive zip, BiomeRegistry biomeRegistry)
+        internal BlockTintResolver(IAssetReader assetReader, BiomeRegistry biomeRegistry)
         {
             _biomeRegistry = biomeRegistry;
-            _grassMap = LoadColormap(zip, "assets/minecraft/textures/colormap/grass.png");
-            _foliageMap = LoadColormap(zip, "assets/minecraft/textures/colormap/foliage.png");
-            _waterMap = LoadColormap(zip, "assets/minecraft/textures/colormap/water.png");
+            _grassMap = LoadColormap(assetReader, "assets/minecraft/textures/colormap/grass.png");
+            _foliageMap = LoadColormap(assetReader, "assets/minecraft/textures/colormap/foliage.png");
+            _waterMap = LoadColormap(assetReader, "assets/minecraft/textures/colormap/water.png");
         }
 
         internal Color32[] BuildTintByBlock(int[] blocks, int sizeX, int sizeY, int sizeZ,
@@ -140,23 +139,18 @@ namespace M2V.Editor.Meshing
             return color;
         }
 
-        private static Texture2D LoadColormap(ZipArchive zip, string entryPath)
+        private static Texture2D LoadColormap(IAssetReader assetReader, string entryPath)
         {
-            if (zip == null)
+            if (assetReader == null)
             {
                 return null;
             }
 
-            var entry = zip.GetEntry(entryPath);
-            if (entry == null)
+            if (!assetReader.TryReadBytes(entryPath, out var bytes))
             {
                 return null;
             }
 
-            using var stream = entry.Open();
-            using var memory = new MemoryStream();
-            stream.CopyTo(memory);
-            var bytes = memory.ToArray();
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
             if (!tex.LoadImage(bytes))
             {

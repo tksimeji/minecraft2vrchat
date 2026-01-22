@@ -14,7 +14,7 @@ namespace M2V.Editor
             public bool UseTextureAtlas;
         }
 
-        public static Mesh GenerateMesh(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, string minecraftJarPath, Options options, ref bool logChunkOnce, out string message, out Texture2D atlasTexture)
+        public static Mesh GenerateMesh(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, string minecraftJarPath, System.IO.FileSystemInfo resourcePack, System.IO.FileSystemInfo dataPack, Options options, ref bool logChunkOnce, out string message, out Texture2D atlasTexture)
         {
             var useCase = CreateUseCase();
             var request = new MeshingRequest
@@ -24,6 +24,8 @@ namespace M2V.Editor
                 Min = min,
                 Max = max,
                 MinecraftJarPath = minecraftJarPath,
+                ResourcePack = resourcePack,
+                DataPack = dataPack,
                 Options = options,
                 LogChunkOnce = logChunkOnce
             };
@@ -47,7 +49,7 @@ namespace M2V.Editor
                 new WorldBlockSource(),
                 new ModelMeshBuilder(),
                 new TextureAtlasBuilder(),
-                zip => new ModelRepository(zip));
+                assets => new ModelRepository(assets));
         }
     }
 }

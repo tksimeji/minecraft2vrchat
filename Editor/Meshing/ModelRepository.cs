@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO.Compression;
 using M2V.Editor.Model;
 
 namespace M2V.Editor.Meshing
@@ -8,9 +7,9 @@ namespace M2V.Editor.Meshing
     {
         private readonly ModelResolver _resolver;
 
-        internal ModelRepository(ZipArchive zip)
+        internal ModelRepository(IAssetReader assets)
         {
-            _resolver = new ModelResolver(zip);
+            _resolver = new ModelResolver(assets);
         }
 
         public List<List<ModelPlacement>> BuildBlockModels(List<BlockStateKey> states)
@@ -25,7 +24,12 @@ namespace M2V.Editor.Meshing
 
         public HashSet<string> CollectTexturePaths(List<List<ModelPlacement>> modelCache)
         {
-            return _resolver.CollectTexturePaths(modelCache);
+            var set = _resolver.CollectTexturePaths(modelCache);
+            if (set.Count == 0)
+            {
+                set.Add("minecraft:block/dirt");
+            }
+            return set;
         }
     }
 }

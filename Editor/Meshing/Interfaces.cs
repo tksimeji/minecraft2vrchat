@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO.Compression;
 using M2V.Editor.Model;
 using UnityEngine;
 
@@ -27,7 +26,7 @@ namespace M2V.Editor.Meshing
 
     internal interface ITextureAtlasBuilder
     {
-        Texture2D BuildTextureAtlasFromTextures(ZipArchive zip, HashSet<string> texturePaths, out Dictionary<string, Rect> uvByTexture, out Dictionary<string, TextureAlphaMode> alphaByTexture);
+        Texture2D BuildTextureAtlasFromTextures(IAssetReader assetReader, HashSet<string> texturePaths, out Dictionary<string, Rect> uvByTexture, out Dictionary<string, TextureAlphaMode> alphaByTexture);
     }
 
     internal interface IMeshBuilder

@@ -2,8 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.IO.Compression;
+using M2V.Editor.Model;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
@@ -19,24 +18,22 @@ namespace M2V.Editor.Meshing
         private readonly List<BiomeInfo> _biomes = new List<BiomeInfo>();
         private readonly int _plainsIndex;
 
-        internal BiomeRegistry(ZipArchive zip)
+        internal BiomeRegistry(IAssetReader assetReader)
         {
-            foreach (var entry in zip.Entries)
+            if (assetReader != null)
             {
-                if (!entry.FullName.EndsWith(".json", StringComparison.Ordinal))
+                foreach (var path in assetReader.EnumeratePaths("data/", ".json"))
                 {
-                    continue;
-                }
+                    if (!TryGetBiomeId(path, out var biomeId))
+                    {
+                        continue;
+                    }
 
-                if (!TryGetBiomeId(entry.FullName, out var biomeId))
-                {
-                    continue;
-                }
-
-                var info = TryReadBiomeInfo(entry, biomeId);
-                if (info != null)
-                {
-                    AddOrUpdate(info);
+                    var info = TryReadBiomeInfo(assetReader, path, biomeId);
+                    if (info != null)
+                    {
+                        AddOrUpdate(info);
+                    }
                 }
             }
 
@@ -112,14 +109,11 @@ namespace M2V.Editor.Meshing
             return true;
         }
 
-        private static BiomeInfo? TryReadBiomeInfo(ZipArchiveEntry entry, string biomeId)
+        private static BiomeInfo? TryReadBiomeInfo(IAssetReader assetReader, string path, string biomeId)
         {
             try
             {
-                using var stream = entry.Open();
-                using var reader = new StreamReader(stream);
-                var json = reader.ReadToEnd();
-                if (string.IsNullOrEmpty(json))
+                if (!assetReader.TryReadText(path, out var json) || string.IsNullOrEmpty(json))
                 {
                     return null;
                 }

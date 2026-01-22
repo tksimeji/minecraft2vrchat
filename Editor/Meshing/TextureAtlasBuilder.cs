@@ -1,18 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
+using M2V.Editor.Model;
 using UnityEngine;
 
 namespace M2V.Editor.Meshing
 {
     internal sealed class TextureAtlasBuilder : ITextureAtlasBuilder
     {
-        public Texture2D BuildTextureAtlasFromTextures(ZipArchive zip, HashSet<string> texturePaths, out Dictionary<string, Rect> uvByTexture, out Dictionary<string, TextureAlphaMode> alphaByTexture)
+        public Texture2D BuildTextureAtlasFromTextures(IAssetReader assetReader, HashSet<string> texturePaths, out Dictionary<string, Rect> uvByTexture, out Dictionary<string, TextureAlphaMode> alphaByTexture)
         {
             uvByTexture = new Dictionary<string, Rect>(StringComparer.Ordinal);
             alphaByTexture = new Dictionary<string, TextureAlphaMode>(StringComparer.Ordinal);
-            if (zip == null)
+            if (assetReader == null)
             {
                 return null;
             }
@@ -25,10 +25,10 @@ namespace M2V.Editor.Meshing
 
             foreach (var fullName in names)
             {
-                var tex = LoadTextureByPath(zip, fullName);
+                var tex = LoadTextureByPath(assetReader, fullName);
                 if (tex == null)
                 {
-                    tex = LoadTextureByPath(zip, "minecraft:block/dirt");
+                    tex = LoadTextureByPath(assetReader, "minecraft:block/dirt");
                 }
 
                 if (tex == null)
@@ -45,7 +45,14 @@ namespace M2V.Editor.Meshing
             var count = textures.Count;
             if (count == 0)
             {
-                return null;
+                var fallback = new Texture2D(16, 16, TextureFormat.RGBA32, false)
+                {
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Repeat
+                };
+                fallback.SetPixels(BuildFallbackPixels(16, 16));
+                fallback.Apply();
+                return fallback;
             }
 
             var columns = Mathf.CeilToInt(Mathf.Sqrt(count));
@@ -83,9 +90,9 @@ namespace M2V.Editor.Meshing
             return atlas;
         }
 
-        private static Texture2D LoadTextureByPath(ZipArchive zip, string texturePath)
+        private static Texture2D LoadTextureByPath(IAssetReader assetReader, string texturePath)
         {
-            if (zip == null || string.IsNullOrEmpty(texturePath))
+            if (assetReader == null || string.IsNullOrEmpty(texturePath))
             {
                 return null;
             }
@@ -101,16 +108,12 @@ namespace M2V.Editor.Meshing
                 path = "block/" + path;
             }
 
-            var entry = zip.GetEntry($"assets/minecraft/textures/{path}.png");
-            if (entry == null)
+            var fullPath = $"assets/minecraft/textures/{path}.png";
+            if (!assetReader.TryReadBytes(fullPath, out var bytes))
             {
                 return null;
             }
 
-            using var stream = entry.Open();
-            using var memory = new MemoryStream();
-            stream.CopyTo(memory);
-            var bytes = memory.ToArray();
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
             if (!tex.LoadImage(bytes))
             {

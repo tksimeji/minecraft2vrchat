@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using Newtonsoft.Json;
 
 namespace M2V.Editor.Model
 {
     internal sealed class ModelResolver
     {
-        private readonly ZipArchive _zip;
+        private readonly IAssetReader _assets;
 
         private readonly Dictionary<string, BlockStateDefinitions> _blockStateCache =
             new Dictionary<string, BlockStateDefinitions>(StringComparer.Ordinal);
@@ -16,9 +15,9 @@ namespace M2V.Editor.Model
         private readonly Dictionary<string, BlockModel> _modelCache =
             new Dictionary<string, BlockModel>(StringComparer.Ordinal);
 
-        internal ModelResolver(ZipArchive zip)
+        internal ModelResolver(IAssetReader assets)
         {
-            _zip = zip;
+            _assets = assets;
         }
 
         internal List<List<ModelPlacement>> BuildBlockModels(List<BlockStateKey> states)
@@ -83,16 +82,13 @@ namespace M2V.Editor.Model
                 return cached;
             }
 
-            var entry = _zip.GetEntry($"assets/minecraft/blockstates/{blockName}.json");
-            if (entry == null)
+            var path = $"assets/minecraft/blockstates/{blockName}.json";
+            if (!_assets.TryReadText(path, out var json))
             {
                 _blockStateCache[blockName] = null;
                 return null;
             }
 
-            using var stream = entry.Open();
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
             var data = JsonConvert.DeserializeObject<BlockStateDefinitions>(json, ModelJsonSerializer.Settings);
             _blockStateCache[blockName] = data;
             return data;
@@ -106,17 +102,14 @@ namespace M2V.Editor.Model
                 return cached;
             }
 
-            var entry = _zip.GetEntry($"assets/minecraft/models/{normalized}.json");
-            if (entry == null)
+            var path = $"assets/minecraft/models/{normalized}.json";
+            if (!_assets.TryReadText(path, out var json))
             {
                 var fallback = new BlockModel();
                 _modelCache[normalized] = fallback;
                 return fallback;
             }
 
-            using var stream = entry.Open();
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
             var data = JsonConvert.DeserializeObject<Model>(json, ModelJsonSerializer.Settings);
             var model = data?.ToModel() ?? new BlockModel();
             _modelCache[normalized] = model;
