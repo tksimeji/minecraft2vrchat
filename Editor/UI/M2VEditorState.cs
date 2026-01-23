@@ -23,8 +23,8 @@ namespace M2V.Editor
         public readonly List<WorldEntry> WorldEntries = new List<WorldEntry>();
         public DirectoryInfo CurrentWorldPath;
         public DirectoryInfo SelectedWorldPath;
-        public FileSystemInfo ResourcePack;
-        public FileSystemInfo DataPack;
+        public string SelectedDimensionId = World.World.OverworldId;
+        public M2VLanguage Language = M2VLanguage.English;
 
         public void SetDefaultRange()
         {
@@ -62,6 +62,11 @@ namespace M2V.Editor
             SelectedWorldPath = dir;
         }
 
+        public void SetSelectedDimension(string dimensionId)
+        {
+            SelectedDimensionId = string.IsNullOrEmpty(dimensionId) ? World.World.OverworldId : dimensionId;
+        }
+
         public void SetCurrentWorld(DirectoryInfo dir)
         {
             CurrentWorldPath = dir;
@@ -80,26 +85,6 @@ namespace M2V.Editor
         public bool IsSelectedWorldValid()
         {
             return GetSelectedWorld() != null;
-        }
-
-        public void SetResourcePack(FileSystemInfo pack)
-        {
-            ResourcePack = pack;
-        }
-
-        public void SetDataPack(FileSystemInfo pack)
-        {
-            DataPack = pack;
-        }
-
-        public string DescribeResourcePack()
-        {
-            return DescribePack(ResourcePack, "Using Minecraft jar assets.");
-        }
-
-        public string DescribeDataPack()
-        {
-            return DescribePack(DataPack, "Using Minecraft jar data.");
         }
 
         public bool IsSameAsCurrent(string path)
@@ -204,26 +189,6 @@ namespace M2V.Editor
         private static string NormalizePath(string path)
         {
             return string.IsNullOrEmpty(path) ? string.Empty : Path.GetFullPath(path);
-        }
-
-        private static string DescribePack(FileSystemInfo pack, string fallback)
-        {
-            if (pack == null)
-            {
-                return fallback;
-            }
-
-            if (pack is FileInfo fileInfo)
-            {
-                return fileInfo.Exists ? $"{fileInfo.Name} (.zip)" : $"{fileInfo.Name} (missing)";
-            }
-
-            if (pack is DirectoryInfo dirInfo)
-            {
-                return dirInfo.Exists ? $"{dirInfo.Name} (folder)" : $"{dirInfo.Name} (missing)";
-            }
-
-            return fallback;
         }
 
         public sealed class WorldEntry

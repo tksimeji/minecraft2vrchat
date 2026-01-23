@@ -15,6 +15,9 @@ namespace M2V.Editor
         private const string UxmlPath = "Assets/M2V/Editor/UI/M2VWorldFolderSelect.uxml";
         private const string UssPath = "Assets/M2V/Editor/UI/M2VWorldFolderSelect.uss";
         private const string DirtTexturePath = "Assets/M2V/Editor/UI/dirt.png";
+        private const string OverworldIconPath = "Assets/M2V/Editor/UI/Overworld.png";
+        private const string NetherIconPath = "Assets/M2V/Editor/UI/Nether.png";
+        private const string EndIconPath = "Assets/M2V/Editor/UI/End.png";
         private const string DoubleSidedShaderPath = "Assets/M2V/Editor/M2VUnlitDoubleSided.shader";
         private const string DoubleSidedTransparentShaderPath = "Assets/M2V/Editor/M2VUnlitDoubleSidedTransparent.shader";
 
@@ -26,21 +29,44 @@ namespace M2V.Editor
         private IntegerField _maxXField;
         private IntegerField _maxYField;
         private IntegerField _maxZField;
-        private Label _resourcePackValue;
-        private Label _dataPackValue;
-        private RadioButton _dimensionOverworld;
-        private RadioButton _dimensionNether;
-        private RadioButton _dimensionEnd;
+        private VisualElement _rootElement;
+        private DropdownField _languageDropdown;
+        private VisualElement _languageHost;
+        private Label _topbarUser;
+        private Label _topbarHelp;
+        private Label _titleLabel;
+        private Label _subtitleLabel;
+        private Label _worldsTitle;
+        private Label _worldTipLabel;
+        private Label _rangeTitle;
+        private Label _rangeHint;
+        private Label _rangeMinLabel;
+        private Label _rangeMaxLabel;
+        private Label _rangeDimensionLabel;
+        private Label _dimensionOverworldLabel;
+        private Label _dimensionNetherLabel;
+        private Label _dimensionEndLabel;
+        private Label _generateTitle;
+        private Label _generateHint;
+        private Label _playCaption;
+        private Label _summaryWorld;
+        private Label _summaryRange;
+        private Label _summaryDimension;
+        private Label _summaryPacks;
+        private Label _loadingTitle;
+        private Button _dimensionOverworldButton;
+        private Button _dimensionNetherButton;
+        private Button _dimensionEndButton;
+        private Image _dimensionOverworldIcon;
+        private Image _dimensionNetherIcon;
+        private Image _dimensionEndIcon;
         private Button _openButton;
         private Button _importButton;
         private Button _meshButton;
         private Button _playButton;
-        private Button _resourcePackZipButton;
-        private Button _resourcePackFolderButton;
-        private Button _resourcePackClearButton;
-        private Button _dataPackZipButton;
-        private Button _dataPackFolderButton;
-        private Button _dataPackClearButton;
+        private Button _customImportButton;
+        private Button _reloadButton;
+        private Button _clearButton;
         private VisualElement _loadingOverlay;
         private VisualElement _loadingBar;
         private VisualElement _loadingFlame;
@@ -125,7 +151,27 @@ namespace M2V.Editor
 
         private void WireUi()
         {
+            BindElements();
+            if (!IsUiReady(_clearButton, _customImportButton, _reloadButton))
+            {
+                return;
+            }
+
+            ValidateWizardElements();
+            ConfigureWorldList();
+            RefreshWorldList();
+            InitializeUiState();
+            BindUiEvents();
+
+            RegisterDragHandlers();
+            UpdateValidation();
+            SetPage(0);
+        }
+
+        private void BindElements()
+        {
             _statusLabel = rootVisualElement.Q<Label>("statusLabel");
+            _rootElement = rootVisualElement.Q<VisualElement>("root");
             _worldList = rootVisualElement.Q<ListView>("worldList");
             _minXField = rootVisualElement.Q<IntegerField>("minXField");
             _minYField = rootVisualElement.Q<IntegerField>("minYField");
@@ -133,23 +179,42 @@ namespace M2V.Editor
             _maxXField = rootVisualElement.Q<IntegerField>("maxXField");
             _maxYField = rootVisualElement.Q<IntegerField>("maxYField");
             _maxZField = rootVisualElement.Q<IntegerField>("maxZField");
-            _resourcePackValue = rootVisualElement.Q<Label>("resourcePackValue");
-            _dataPackValue = rootVisualElement.Q<Label>("dataPackValue");
-            _dimensionOverworld = rootVisualElement.Q<RadioButton>("dimensionOverworld");
-            _dimensionNether = rootVisualElement.Q<RadioButton>("dimensionNether");
-            _dimensionEnd = rootVisualElement.Q<RadioButton>("dimensionEnd");
+            _languageDropdown = rootVisualElement.Q<DropdownField>("languageDropdown");
+            _languageHost = rootVisualElement.Q<VisualElement>("languageHost");
+            _topbarUser = rootVisualElement.Q<Label>("topbarUser");
+            _topbarHelp = rootVisualElement.Q<Label>("topbarHelp");
+            _titleLabel = rootVisualElement.Q<Label>("titleLabel");
+            _subtitleLabel = rootVisualElement.Q<Label>("subtitleLabel");
+            _worldsTitle = rootVisualElement.Q<Label>("worldsTitle");
+            _worldTipLabel = rootVisualElement.Q<Label>("worldTipLabel");
+            _rangeTitle = rootVisualElement.Q<Label>("rangeTitle");
+            _rangeHint = rootVisualElement.Q<Label>("rangeHint");
+            _rangeMinLabel = rootVisualElement.Q<Label>("rangeMinLabel");
+            _rangeMaxLabel = rootVisualElement.Q<Label>("rangeMaxLabel");
+            _rangeDimensionLabel = rootVisualElement.Q<Label>("rangeDimensionLabel");
+            _dimensionOverworldLabel = rootVisualElement.Q<Label>("dimensionOverworldLabel");
+            _dimensionNetherLabel = rootVisualElement.Q<Label>("dimensionNetherLabel");
+            _dimensionEndLabel = rootVisualElement.Q<Label>("dimensionEndLabel");
+            _generateTitle = rootVisualElement.Q<Label>("generateTitle");
+            _generateHint = rootVisualElement.Q<Label>("generateHint");
+            _playCaption = rootVisualElement.Q<Label>("playCaption");
+            _summaryWorld = rootVisualElement.Q<Label>("summaryWorld");
+            _summaryRange = rootVisualElement.Q<Label>("summaryRange");
+            _summaryDimension = rootVisualElement.Q<Label>("summaryDimension");
+            _summaryPacks = rootVisualElement.Q<Label>("summaryPacks");
+            _loadingTitle = rootVisualElement.Q<Label>("loadingTitle");
+            _dimensionOverworldButton = rootVisualElement.Q<Button>("dimensionOverworldButton");
+            _dimensionNetherButton = rootVisualElement.Q<Button>("dimensionNetherButton");
+            _dimensionEndButton = rootVisualElement.Q<Button>("dimensionEndButton");
+            _dimensionOverworldIcon = rootVisualElement.Q<Image>("dimensionOverworldIcon");
+            _dimensionNetherIcon = rootVisualElement.Q<Image>("dimensionNetherIcon");
+            _dimensionEndIcon = rootVisualElement.Q<Image>("dimensionEndIcon");
 
             _openButton = rootVisualElement.Q<Button>("openButton");
-            var clearButton = rootVisualElement.Q<Button>("clearButton");
+            _clearButton = rootVisualElement.Q<Button>("clearButton");
             _importButton = rootVisualElement.Q<Button>("importButton");
             _meshButton = rootVisualElement.Q<Button>("meshButton");
             _playButton = rootVisualElement.Q<Button>("playButton");
-            _resourcePackZipButton = rootVisualElement.Q<Button>("resourcePackZipButton");
-            _resourcePackFolderButton = rootVisualElement.Q<Button>("resourcePackFolderButton");
-            _resourcePackClearButton = rootVisualElement.Q<Button>("resourcePackClearButton");
-            _dataPackZipButton = rootVisualElement.Q<Button>("dataPackZipButton");
-            _dataPackFolderButton = rootVisualElement.Q<Button>("dataPackFolderButton");
-            _dataPackClearButton = rootVisualElement.Q<Button>("dataPackClearButton");
             _loadingOverlay = rootVisualElement.Q<VisualElement>("loadingOverlay");
             _loadingBar = rootVisualElement.Q<VisualElement>("loadingBar");
             _loadingFlame = null;
@@ -159,37 +224,42 @@ namespace M2V.Editor
             _nextRangeButton = rootVisualElement.Q<Button>("nextButtonRange");
             _backRangeButton = rootVisualElement.Q<Button>("backButtonRange");
             _backGenerateButton = rootVisualElement.Q<Button>("backButtonGenerate");
-            var customImportButton = rootVisualElement.Q<Button>("customImportButton");
-            var reloadButton = rootVisualElement.Q<Button>("reloadButton");
+            _customImportButton = rootVisualElement.Q<Button>("customImportButton");
+            _reloadButton = rootVisualElement.Q<Button>("reloadButton");
             _pageWorld = rootVisualElement.Q<VisualElement>("pageWorld");
             _pageRange = rootVisualElement.Q<VisualElement>("pageRange");
             _pageGenerate = rootVisualElement.Q<VisualElement>("pageGenerate");
             _stepWorld = rootVisualElement.Q<Label>("stepWorld");
             _stepRange = rootVisualElement.Q<Label>("stepRange");
             _stepGenerate = rootVisualElement.Q<Label>("stepGenerate");
+        }
 
-            if (!IsUiReady(clearButton, customImportButton, reloadButton))
-            {
-                return;
-            }
-
-            if (_nextWorldButton == null || _nextRangeButton == null || _backRangeButton == null ||
-                _backGenerateButton == null || _pageWorld == null || _pageRange == null || _pageGenerate == null)
+        private void ValidateWizardElements()
+        {
+            if (_nextWorldButton == null || _nextRangeButton == null ||
+                _backRangeButton == null || _backGenerateButton == null ||
+                _pageWorld == null || _pageRange == null || _pageGenerate == null)
             {
                 Debug.LogWarning("[Minecraft2VRChat] Wizard navigation elements missing. Check UXML names.");
             }
+        }
 
-            ConfigureWorldList();
-            RefreshWorldList();
+        private void InitializeUiState()
+        {
             _state.SetDefaultRange();
             SyncStateToUi();
             RegisterRangeFieldHandlers();
-            RefreshPackLabels();
+            ConfigureDimensionIcons();
+            ConfigureLanguageDropdown();
+            ApplyLocalization();
+        }
 
-            customImportButton.clicked += OnClickCustomImport;
-            reloadButton.clicked += OnClickReload;
+        private void BindUiEvents()
+        {
+            _customImportButton.clicked += OnClickCustomImport;
+            _reloadButton.clicked += OnClickReload;
             _openButton.clicked += OnClickOpen;
-            clearButton.clicked += OnClickClear;
+            _clearButton.clicked += OnClickClear;
             if (_importButton != null)
             {
                 _importButton.clicked += OnClickImport;
@@ -199,30 +269,11 @@ namespace M2V.Editor
             {
                 _playButton.clicked += OnClickGenerateMesh;
             }
-            if (_resourcePackZipButton != null)
-            {
-                _resourcePackZipButton.clicked += OnClickSelectResourcePackZip;
-            }
-            if (_resourcePackFolderButton != null)
-            {
-                _resourcePackFolderButton.clicked += OnClickSelectResourcePackFolder;
-            }
-            if (_resourcePackClearButton != null)
-            {
-                _resourcePackClearButton.clicked += OnClickClearResourcePack;
-            }
-            if (_dataPackZipButton != null)
-            {
-                _dataPackZipButton.clicked += OnClickSelectDataPackZip;
-            }
-            if (_dataPackFolderButton != null)
-            {
-                _dataPackFolderButton.clicked += OnClickSelectDataPackFolder;
-            }
-            if (_dataPackClearButton != null)
-            {
-                _dataPackClearButton.clicked += OnClickClearDataPack;
-            }
+            BindNavigation();
+        }
+
+        private void BindNavigation()
+        {
             _currentPageIndex = 0;
             if (_nextWorldButton != null)
             {
@@ -268,10 +319,6 @@ namespace M2V.Editor
             {
                 _stepGenerate.RegisterCallback<ClickEvent>(_ => SetPage(2));
             }
-
-            RegisterDragHandlers();
-            UpdateValidation();
-            SetPage(0);
         }
 
         private bool IsUiReady(Button clearButton, Button customImportButton, Button reloadButton)
@@ -279,7 +326,7 @@ namespace M2V.Editor
             return _statusLabel != null && _worldList != null &&
                    _minXField != null && _minYField != null && _minZField != null &&
                    _maxXField != null && _maxYField != null && _maxZField != null &&
-                   _dimensionOverworld != null && _dimensionNether != null && _dimensionEnd != null &&
+                   _dimensionOverworldButton != null && _dimensionNetherButton != null && _dimensionEndButton != null &&
                    _openButton != null && clearButton != null && _meshButton != null &&
                    customImportButton != null && reloadButton != null;
         }
@@ -322,7 +369,7 @@ namespace M2V.Editor
                 return;
             }
 
-            step.EnableInClassList("tab-active", active);
+            step.EnableInClassList("m2v-tab--active", active);
         }
 
 
@@ -429,7 +476,9 @@ namespace M2V.Editor
             var worldDir = _state.GetSelectedWorld();
             if (worldDir == null)
             {
-                EditorUtility.DisplayDialog("Minecraft2VRChat", "Please select a valid Minecraft world folder.", "OK");
+                EditorUtility.DisplayDialog(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogTitle),
+                    M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogSelectWorld),
+                    "OK");
                 return;
             }
 
@@ -438,7 +487,9 @@ namespace M2V.Editor
             var dimensionId = GetSelectedDimensionId();
             if (!TryGetRange(out var min, out var max))
             {
-                EditorUtility.DisplayDialog("Minecraft2VRChat", "Please enter valid range values.", "OK");
+                EditorUtility.DisplayDialog(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogTitle),
+                    M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogEnterRange),
+                    "OK");
                 return;
             }
 
@@ -469,19 +520,23 @@ namespace M2V.Editor
 
         private void GenerateMeshInternal()
         {
-            SetLoadingStatus("Reading blocks…");
+            SetLoadingStatus(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.LoadingReadingBlocks));
             var path = _state.GetSelectedPath();
             var worldDir = _state.GetSelectedWorld();
             if (worldDir == null)
             {
-                EditorUtility.DisplayDialog("Minecraft2VRChat", "Please select a valid Minecraft world folder.", "OK");
+                EditorUtility.DisplayDialog(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogTitle),
+                    M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogSelectWorld),
+                    "OK");
                 return;
             }
 
             var dimensionId = GetSelectedDimensionId();
             if (!TryGetRange(out var min, out var max))
             {
-                EditorUtility.DisplayDialog("Minecraft2VRChat", "Please enter valid range values.", "OK");
+                EditorUtility.DisplayDialog(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogTitle),
+                    M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogEnterRange),
+                    "OK");
                 return;
             }
 
@@ -489,11 +544,13 @@ namespace M2V.Editor
             var jarPath = GetMinecraftVersionJarPath(versionName);
             if (string.IsNullOrEmpty(jarPath))
             {
-                EditorUtility.DisplayDialog("Minecraft2VRChat", "Minecraft version jar not found for this world.", "OK");
+                EditorUtility.DisplayDialog(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogTitle),
+                    M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogJarMissing),
+                    "OK");
                 return;
             }
 
-            SetLoadingStatus("Generating mesh…");
+            SetLoadingStatus(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.LoadingGeneratingMesh));
             var options = new M2VMeshGenerator.Options
             {
                 UseGreedy = false,
@@ -503,19 +560,21 @@ namespace M2V.Editor
                 UseTextureAtlas = true
             };
             var logChunkOnce = s_logChunkDatOnce;
-            var mesh = M2VMeshGenerator.GenerateMesh(path, dimensionId, min, max, jarPath, _state.ResourcePack, _state.DataPack, options, ref logChunkOnce, out var message, out var atlasTexture);
+            var mesh = M2VMeshGenerator.GenerateMesh(path, dimensionId, min, max, jarPath, options, ref logChunkOnce, out var message, out var atlasTexture);
             s_logChunkDatOnce = logChunkOnce;
             if (mesh == null)
             {
                 var dialogMessage = string.IsNullOrEmpty(message)
-                    ? "Mesh generation failed."
+                    ? M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogMeshFailed)
                     : message;
                 Debug.LogWarning(dialogMessage);
-                EditorUtility.DisplayDialog("Minecraft2VRChat", dialogMessage, "OK");
+                EditorUtility.DisplayDialog(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.DialogTitle),
+                    dialogMessage,
+                    "OK");
                 return;
             }
 
-            SetLoadingStatus("Applying material…");
+            SetLoadingStatus(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.LoadingApplyingMaterial));
             var go = GameObject.Find("M2V_GreedyMesh");
             if (go == null)
             {
@@ -550,7 +609,7 @@ namespace M2V.Editor
             }
 
             _loadingOverlay.style.display = DisplayStyle.Flex;
-            SetLoadingStatus("Preparing…");
+            SetLoadingStatus(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.LoadingPreparing));
             StartLoadingAnimation();
             Repaint();
         }
@@ -656,25 +715,25 @@ namespace M2V.Editor
             _worldList.makeItem = () =>
             {
                 var root = new VisualElement();
-                root.AddToClassList("world-item");
+                root.AddToClassList("m2v-world-item");
 
                 var icon = new Image();
-                icon.AddToClassList("world-icon");
+                icon.AddToClassList("m2v-world-icon");
                 root.Add(icon);
 
                 var info = new VisualElement();
-                info.AddToClassList("world-info");
+                info.AddToClassList("m2v-world-info");
 
                 var name = new Label();
-                name.AddToClassList("world-name");
+                name.AddToClassList("m2v-world-name");
                 info.Add(name);
 
                 var path = new Label();
-                path.AddToClassList("world-path");
+                path.AddToClassList("m2v-world-path");
                 info.Add(path);
 
                 var meta = new Label();
-                meta.AddToClassList("world-meta");
+                meta.AddToClassList("m2v-world-meta");
                 info.Add(meta);
 
                 root.Add(info);
@@ -685,9 +744,9 @@ namespace M2V.Editor
             {
                 var entry = _state.WorldEntries[index];
                 var icon = element.Q<Image>();
-                var name = element.Q<Label>(className: "world-name");
-                var path = element.Q<Label>(className: "world-path");
-                var meta = element.Q<Label>(className: "world-meta");
+                var name = element.Q<Label>(className: "m2v-world-name");
+                var path = element.Q<Label>(className: "m2v-world-path");
+                var meta = element.Q<Label>(className: "m2v-world-meta");
 
                 icon.image = entry.Icon;
                 name.text = string.IsNullOrEmpty(entry.Name) ? entry.FolderName : entry.Name;
@@ -695,8 +754,8 @@ namespace M2V.Editor
                     ? entry.FolderName
                     : $"{entry.FolderName} ({entry.LastPlayed})";
                 meta.text = string.IsNullOrEmpty(entry.Version)
-                    ? $"{entry.GameMode} Mode"
-                    : $"{entry.GameMode} Mode, Version: {entry.Version}";
+                    ? $"{entry.GameMode} {M2VLocalization.Get(_state.Language, M2VLocalization.Keys.ModeSuffix)}"
+                    : $"{entry.GameMode} {M2VLocalization.Get(_state.Language, M2VLocalization.Keys.ModeSuffix)}, {M2VLocalization.Get(_state.Language, M2VLocalization.Keys.VersionLabel)}: {entry.Version}";
                 element.tooltip = entry.Path?.FullName ?? string.Empty;
 
                 element.EnableInClassList("selected", _worldList.selectedIndex == index);
@@ -748,22 +807,7 @@ namespace M2V.Editor
 
         private string GetSelectedDimensionId()
         {
-            if (_dimensionOverworld == null || _dimensionNether == null || _dimensionEnd == null)
-            {
-                return "minecraft:overworld";
-            }
-
-            if (_dimensionNether.value)
-            {
-                return World.World.NetherId;
-            }
-
-            if (_dimensionEnd.value)
-            {
-                return World.World.EndId;
-            }
-
-            return World.World.OverworldId;
+            return string.IsNullOrEmpty(_state.SelectedDimensionId) ? World.World.OverworldId : _state.SelectedDimensionId;
         }
 
         private void ApplySpawnDefaultRange(World.World worldDir)
@@ -806,7 +850,6 @@ namespace M2V.Editor
             var path = _state.GetSelectedPath();
             var worldDir = _state.GetSelectedWorld();
             var isValid = _state.IsSelectedWorldValid();
-            _state.SetSelectedWorld(string.IsNullOrEmpty(path) ? null : new DirectoryInfo(path));
             if (_openButton != null)
             {
                 _openButton.SetEnabled(!string.IsNullOrEmpty(path) && Directory.Exists(path));
@@ -816,52 +859,194 @@ namespace M2V.Editor
             {
                 _importButton.SetEnabled(isValid);
             }
+            if (_nextWorldButton != null)
+            {
+                _nextWorldButton.SetEnabled(isValid);
+            }
+            if (_meshButton != null)
+            {
+                _meshButton.SetEnabled(isValid);
+            }
+            if (_playButton != null)
+            {
+                _playButton.SetEnabled(isValid);
+            }
 
             _statusLabel.RemoveFromClassList("ok");
             _statusLabel.RemoveFromClassList("error");
 
             if (string.IsNullOrEmpty(path))
             {
-                _statusLabel.text = "No folder selected.";
-                _statusLabel.AddToClassList("error");
-                _state.SetCurrentWorld(null);
-                UpdateDimensionChoices(string.Empty);
-                RefreshPackLabels();
+                SetStatus(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.StatusNoFolder), isOk: false);
+                HandleWorldSelectionChanged(null, string.Empty);
+                UpdateSummary();
                 return;
             }
 
             if (isValid)
             {
-                _statusLabel.text = "World folder looks valid.";
-                _statusLabel.AddToClassList("ok");
-                if (!_state.IsSameAsCurrent(path))
-                {
-                    _state.SetCurrentWorld(new DirectoryInfo(path));
-                    UpdateDimensionChoices(path);
-                    ApplySpawnDefaultRange(worldDir);
-                }
+                SetStatus(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.StatusValid), isOk: true);
+                HandleWorldSelectionChanged(worldDir, path);
             }
             else
             {
-                _statusLabel.text = "Invalid folder. Missing level.dat.";
-                _statusLabel.AddToClassList("error");
-                _state.SetCurrentWorld(null);
-                UpdateDimensionChoices(string.Empty);
+                SetStatus(M2VLocalization.Get(_state.Language, M2VLocalization.Keys.StatusInvalid), isOk: false);
+                HandleWorldSelectionChanged(null, string.Empty);
             }
-
-            RefreshPackLabels();
+            UpdateSummary();
         }
 
-        private void UpdateDimensionChoices(string worldFolder)
+        private void SetStatus(string text, bool isOk)
         {
-            if (_dimensionOverworld == null || _dimensionNether == null || _dimensionEnd == null)
+            if (_statusLabel == null)
             {
                 return;
             }
 
-            _dimensionOverworld.value = true;
-            _dimensionNether.value = false;
-            _dimensionEnd.value = false;
+            _statusLabel.text = text;
+            _statusLabel.RemoveFromClassList("ok");
+            _statusLabel.RemoveFromClassList("error");
+            _statusLabel.AddToClassList(isOk ? "ok" : "error");
+        }
+
+        private void HandleWorldSelectionChanged(World.World worldDir, string path)
+        {
+            if (!_state.IsSameAsCurrent(path))
+            {
+                _state.SetCurrentWorld(string.IsNullOrEmpty(path) ? null : new DirectoryInfo(path));
+                UpdateDimensionChoices(path);
+                ApplySpawnDefaultRange(worldDir);
+            }
+
+            if (worldDir == null)
+            {
+                UpdateDimensionChoices(string.Empty);
+                _state.SetCurrentWorld(null);
+            }
+        }
+
+        private void UpdateDimensionChoices(string worldFolder)
+        {
+            if (_dimensionOverworldButton == null || _dimensionNetherButton == null || _dimensionEndButton == null)
+            {
+                return;
+            }
+
+            _state.SetSelectedDimension(World.World.OverworldId);
+            UpdateDimensionSelection();
+        }
+
+        private void ConfigureDimensionIcons()
+        {
+            if (_dimensionOverworldButton == null || _dimensionNetherButton == null || _dimensionEndButton == null)
+            {
+                return;
+            }
+
+            _dimensionOverworldButton.clicked += () => SelectDimension(World.World.OverworldId);
+            _dimensionNetherButton.clicked += () => SelectDimension(World.World.NetherId);
+            _dimensionEndButton.clicked += () => SelectDimension(World.World.EndId);
+
+            if (_dimensionOverworldIcon != null)
+            {
+                AssignUiIcon(_dimensionOverworldIcon, OverworldIconPath);
+            }
+
+            if (_dimensionNetherIcon != null)
+            {
+                AssignUiIcon(_dimensionNetherIcon, NetherIconPath);
+            }
+
+            if (_dimensionEndIcon != null)
+            {
+                AssignUiIcon(_dimensionEndIcon, EndIconPath);
+            }
+
+            UpdateDimensionSelection();
+        }
+
+        private void SelectDimension(string dimensionId)
+        {
+            _state.SetSelectedDimension(dimensionId);
+            UpdateDimensionSelection();
+            UpdateSummary();
+        }
+
+        private void UpdateDimensionSelection()
+        {
+            if (_dimensionOverworldButton == null || _dimensionNetherButton == null || _dimensionEndButton == null)
+            {
+                return;
+            }
+
+            var id = string.IsNullOrEmpty(_state.SelectedDimensionId) ? World.World.OverworldId : _state.SelectedDimensionId;
+            _dimensionOverworldButton.EnableInClassList("selected", id == World.World.OverworldId);
+            _dimensionNetherButton.EnableInClassList("selected", id == World.World.NetherId);
+            _dimensionEndButton.EnableInClassList("selected", id == World.World.EndId);
+        }
+
+        private static void AssignUiIcon(Image target, string path)
+        {
+            if (target == null || string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer != null)
+            {
+                var changed = false;
+                if (importer.textureType != TextureImporterType.Sprite)
+                {
+                    importer.textureType = TextureImporterType.Sprite;
+                    changed = true;
+                }
+                if (importer.alphaSource != TextureImporterAlphaSource.FromInput)
+                {
+                    importer.alphaSource = TextureImporterAlphaSource.FromInput;
+                    changed = true;
+                }
+                if (!importer.alphaIsTransparency)
+                {
+                    importer.alphaIsTransparency = true;
+                    changed = true;
+                }
+                if (importer.textureCompression != TextureImporterCompression.Uncompressed)
+                {
+                    importer.textureCompression = TextureImporterCompression.Uncompressed;
+                    changed = true;
+                }
+                if (importer.mipmapEnabled)
+                {
+                    importer.mipmapEnabled = false;
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    importer.SaveAndReimport();
+                }
+            }
+
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite != null && sprite.texture != null)
+            {
+                var texture = sprite.texture;
+                texture.filterMode = FilterMode.Point;
+                texture.wrapMode = TextureWrapMode.Clamp;
+                target.image = texture;
+                target.scaleMode = ScaleMode.ScaleToFit;
+                return;
+            }
+
+            var fallback = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (fallback != null)
+            {
+                fallback.filterMode = FilterMode.Point;
+                fallback.wrapMode = TextureWrapMode.Clamp;
+            }
+            target.image = fallback;
+            target.scaleMode = ScaleMode.ScaleToFit;
         }
 
         private static bool IsDefaultRange(Vector3Int min, Vector3Int max)
@@ -883,6 +1068,8 @@ namespace M2V.Editor
             _state.MaxX = _maxXField.value;
             _state.MaxY = _maxYField.value;
             _state.MaxZ = _maxZField.value;
+            UpdateRangeButtons();
+            UpdateSummary();
         }
 
         private void SyncStateToUi()
@@ -901,85 +1088,232 @@ namespace M2V.Editor
             _maxYField.value = _state.MaxY;
             _maxZField.value = _state.MaxZ;
             _isSyncingRange = false;
+            UpdateRangeButtons();
+            UpdateSummary();
         }
 
-        private void RefreshPackLabels()
+        private void UpdateRangeButtons()
         {
-            if (_resourcePackValue != null)
-            {
-                _resourcePackValue.text = _state.DescribeResourcePack();
-                _resourcePackValue.tooltip = _state.ResourcePack?.FullName ?? "Using Minecraft jar assets.";
-            }
-
-            if (_dataPackValue != null)
-            {
-                _dataPackValue.text = _state.DescribeDataPack();
-                _dataPackValue.tooltip = _state.DataPack?.FullName ?? "Using Minecraft jar data.";
-            }
-        }
-
-        private void OnClickSelectResourcePackZip()
-        {
-            var start = GetDefaultResourcePacksPath();
-            var selected = EditorUtility.OpenFilePanel("Select Resource Pack (.zip)", start, "zip");
-            if (string.IsNullOrEmpty(selected))
+            if (_nextRangeButton == null)
             {
                 return;
             }
 
-            _state.SetResourcePack(new FileInfo(selected));
-            RefreshPackLabels();
+            _nextRangeButton.SetEnabled(IsRangeValid() && _state.IsSelectedWorldValid());
         }
 
-        private void OnClickSelectResourcePackFolder()
+        private bool IsRangeValid()
         {
-            var start = GetDefaultResourcePacksPath();
-            var selected = EditorUtility.OpenFolderPanel("Select Resource Pack Folder", start, "");
-            if (string.IsNullOrEmpty(selected))
+            _state.GetRange(out var min, out var max);
+            var sizeX = max.x - min.x + 1;
+            var sizeY = max.y - min.y + 1;
+            var sizeZ = max.z - min.z + 1;
+            return sizeX > 0 && sizeY > 0 && sizeZ > 0;
+        }
+
+        private void UpdateSummary()
+        {
+            if (_summaryWorld == null || _summaryRange == null || _summaryDimension == null || _summaryPacks == null)
             {
                 return;
             }
 
-            _state.SetResourcePack(new DirectoryInfo(selected));
-            RefreshPackLabels();
+            var lang = _state.Language;
+            var worldName = GetSelectedWorldLabel();
+            _summaryWorld.text = $"{M2VLocalization.Get(lang, M2VLocalization.Keys.SummaryWorld)}: {worldName}";
+
+            _state.GetRange(out var min, out var max);
+            _summaryRange.text = $"{M2VLocalization.Get(lang, M2VLocalization.Keys.SummaryRange)}: ({min.x},{min.y},{min.z}) → ({max.x},{max.y},{max.z})";
+
+            var dimensionLabel = GetSelectedDimensionLabel(lang);
+            _summaryDimension.text = $"{M2VLocalization.Get(lang, M2VLocalization.Keys.SummaryDimension)}: {dimensionLabel}";
+
+            var packsLabel = GetPacksSummary(lang);
+            _summaryPacks.text = $"{M2VLocalization.Get(lang, M2VLocalization.Keys.SummaryPacks)}: {packsLabel}";
         }
 
-        private void OnClickClearResourcePack()
+        private string GetSelectedWorldLabel()
         {
-            _state.SetResourcePack(null);
-            RefreshPackLabels();
+            var path = _state.SelectedWorldPath;
+            if (path == null)
+            {
+                return "-";
+            }
+
+            foreach (var entry in _state.WorldEntries)
+            {
+                if (entry?.Path == null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(Path.GetFullPath(entry.Path.FullName), Path.GetFullPath(path.FullName), StringComparison.OrdinalIgnoreCase))
+                {
+                    return string.IsNullOrEmpty(entry.Name) ? entry.FolderName : entry.Name;
+                }
+            }
+
+            return path.Name;
         }
 
-        private void OnClickSelectDataPackZip()
+        private string GetSelectedDimensionLabel(M2VLanguage language)
         {
-            var start = GetDefaultDataPacksPath();
-            var selected = EditorUtility.OpenFilePanel("Select Data Pack (.zip)", start, "zip");
-            if (string.IsNullOrEmpty(selected))
+            return _state.SelectedDimensionId switch
+            {
+                World.World.NetherId => M2VLocalization.Get(language, M2VLocalization.Keys.DimensionNether),
+                World.World.EndId => M2VLocalization.Get(language, M2VLocalization.Keys.DimensionEnd),
+                _ => M2VLocalization.Get(language, M2VLocalization.Keys.DimensionOverworld)
+            };
+        }
+
+        private string GetPacksSummary(M2VLanguage language)
+        {
+            var hasResource = ResolveWorldResourcePack(_state.SelectedWorldPath) != null;
+            var hasData = ResolveWorldDataPack(_state.SelectedWorldPath) != null;
+            if (!hasResource && !hasData)
+            {
+                return M2VLocalization.Get(language, M2VLocalization.Keys.SummaryNone);
+            }
+
+            if (hasResource && hasData)
+            {
+                return M2VLocalization.Get(language, M2VLocalization.Keys.SummaryResourceData);
+            }
+
+            return hasResource
+                ? M2VLocalization.Get(language, M2VLocalization.Keys.SummaryResource)
+                : M2VLocalization.Get(language, M2VLocalization.Keys.SummaryData);
+        }
+
+        private static FileSystemInfo ResolveWorldResourcePack(DirectoryInfo worldDir)
+        {
+            if (worldDir == null || !worldDir.Exists)
+            {
+                return null;
+            }
+
+            var zipPath = Path.Combine(worldDir.FullName, "resources.zip");
+            if (File.Exists(zipPath))
+            {
+                return new FileInfo(zipPath);
+            }
+
+            var folderPath = Path.Combine(worldDir.FullName, "resources");
+            if (Directory.Exists(folderPath))
+            {
+                return new DirectoryInfo(folderPath);
+            }
+
+            return null;
+        }
+
+        private static FileSystemInfo ResolveWorldDataPack(DirectoryInfo worldDir)
+        {
+            if (worldDir == null || !worldDir.Exists)
+            {
+                return null;
+            }
+
+            var folderPath = Path.Combine(worldDir.FullName, "datapacks");
+            if (Directory.Exists(folderPath))
+            {
+                return new DirectoryInfo(folderPath);
+            }
+
+            return null;
+        }
+
+        private void ConfigureLanguageDropdown()
+        {
+            if (_languageDropdown == null && _languageHost != null)
+            {
+                _languageDropdown = new DropdownField();
+                _languageDropdown.AddToClassList("m2v-topbar-dropdown");
+                _languageHost.Add(_languageDropdown);
+            }
+
+            if (_languageDropdown == null)
             {
                 return;
             }
 
-            _state.SetDataPack(new FileInfo(selected));
-            RefreshPackLabels();
+            _languageDropdown.choices = new List<string> { "English", "日本語" };
+            _languageDropdown.value = _state.Language == M2VLanguage.Japanese ? "日本語" : "English";
+            _languageDropdown.label = string.Empty;
+            _languageDropdown.RegisterValueChangedCallback(evt =>
+            {
+                _state.Language = evt.newValue == "日本語" ? M2VLanguage.Japanese : M2VLanguage.English;
+                ApplyLocalization();
+                UpdateValidation();
+            });
         }
 
-        private void OnClickSelectDataPackFolder()
+        private void ApplyLocalization()
         {
-            var start = GetDefaultDataPacksPath();
-            var selected = EditorUtility.OpenFolderPanel("Select Data Pack Folder", start, "");
-            if (string.IsNullOrEmpty(selected))
+            var lang = _state.Language;
+            if (_rootElement != null)
+            {
+                _rootElement.EnableInClassList("lang-ja", lang == M2VLanguage.Japanese);
+            }
+            SetLabel(_topbarUser, M2VLocalization.Keys.TopbarUser, lang);
+            SetLabel(_topbarHelp, M2VLocalization.Keys.TopbarHelp, lang);
+            SetLabel(_titleLabel, M2VLocalization.Keys.Title, lang);
+            SetLabel(_subtitleLabel, M2VLocalization.Keys.Subtitle, lang);
+            SetLabel(_stepWorld, M2VLocalization.Keys.TabWorlds, lang);
+            SetLabel(_stepRange, M2VLocalization.Keys.TabRange, lang);
+            SetLabel(_stepGenerate, M2VLocalization.Keys.TabGenerate, lang);
+            SetLabel(_worldsTitle, M2VLocalization.Keys.WorldsTitle, lang);
+            SetLabel(_worldTipLabel, M2VLocalization.Keys.WorldTip, lang);
+            SetLabel(_rangeTitle, M2VLocalization.Keys.RangeTitle, lang);
+            SetLabel(_rangeHint, M2VLocalization.Keys.RangeHint, lang);
+            SetLabel(_rangeMinLabel, M2VLocalization.Keys.RangeMin, lang);
+            SetLabel(_rangeMaxLabel, M2VLocalization.Keys.RangeMax, lang);
+            SetLabel(_rangeDimensionLabel, M2VLocalization.Keys.RangeDimension, lang);
+            SetLabel(_dimensionOverworldLabel, M2VLocalization.Keys.DimensionOverworld, lang);
+            SetLabel(_dimensionNetherLabel, M2VLocalization.Keys.DimensionNether, lang);
+            SetLabel(_dimensionEndLabel, M2VLocalization.Keys.DimensionEnd, lang);
+            SetLabel(_generateTitle, M2VLocalization.Keys.GenerateTitle, lang);
+            SetLabel(_generateHint, M2VLocalization.Keys.GenerateHint, lang);
+            SetLabel(_playCaption, M2VLocalization.Keys.PlayCaption, lang);
+            if (_loadingTitle != null)
+            {
+                _loadingTitle.text = M2VLocalization.Get(lang, M2VLocalization.Keys.LoadingTitle);
+            }
+            if (_loadingStatusLabel != null)
+            {
+                _loadingStatusLabel.text = M2VLocalization.Get(lang, M2VLocalization.Keys.LoadingPreparing);
+            }
+
+            SetButton(_reloadButton, M2VLocalization.Keys.Reload, lang);
+            SetButton(_customImportButton, M2VLocalization.Keys.SelectCustomFolder, lang);
+            SetButton(_openButton, M2VLocalization.Keys.OpenFolder, lang);
+            SetButton(_clearButton, M2VLocalization.Keys.Clear, lang);
+            SetButton(_meshButton, M2VLocalization.Keys.GenerateButton, lang);
+            SetButton(_nextWorldButton, M2VLocalization.Keys.Next, lang);
+            SetButton(_nextRangeButton, M2VLocalization.Keys.Next, lang);
+            SetButton(_backRangeButton, M2VLocalization.Keys.Back, lang);
+            SetButton(_backGenerateButton, M2VLocalization.Keys.Back, lang);
+            UpdateSummary();
+        }
+
+        private static void SetLabel(Label label, string key, M2VLanguage language)
+        {
+            if (label == null)
             {
                 return;
             }
 
-            _state.SetDataPack(new DirectoryInfo(selected));
-            RefreshPackLabels();
+            label.text = M2VLocalization.Get(language, key);
         }
 
-        private void OnClickClearDataPack()
+        private static void SetButton(Button button, string key, M2VLanguage language)
         {
-            _state.SetDataPack(null);
-            RefreshPackLabels();
+            if (button == null)
+            {
+                return;
+            }
+
+            button.text = M2VLocalization.Get(language, key);
         }
 
         private static Texture2D LoadWorldIcon(string worldFolder)
@@ -1289,29 +1623,6 @@ namespace M2V.Editor
         {
             var root = GetMinecraftRootPath();
             return string.IsNullOrEmpty(root) ? string.Empty : Path.Combine(root, "saves");
-        }
-
-        private static string GetDefaultResourcePacksPath()
-        {
-            var root = GetMinecraftRootPath();
-            return string.IsNullOrEmpty(root) ? string.Empty : Path.Combine(root, "resourcepacks");
-        }
-
-        private string GetDefaultDataPacksPath()
-        {
-            var worldDir = _state.SelectedWorldPath;
-            if (worldDir != null && worldDir.Exists)
-            {
-                var candidate = Path.Combine(worldDir.FullName, "datapacks");
-                if (Directory.Exists(candidate))
-                {
-                    return candidate;
-                }
-
-                return worldDir.FullName;
-            }
-
-            return GetDefaultWorldsPath();
         }
 
         private static string GetMinecraftRootPath()

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using M2V.Editor.Model;
 using UnityEngine;
 
@@ -42,26 +41,18 @@ namespace M2V.Editor.Meshing
             var volume = (long)sizeX * sizeY * sizeZ;
             // Removed hard cap to allow large ranges; caller should manage memory/timeout externally.
 
-            if (string.IsNullOrEmpty(request.MinecraftJarPath) || !File.Exists(request.MinecraftJarPath))
+            var resourcePack = ResolveWorldResourcePack(request.WorldFolder);
+            var dataPack = ResolveWorldDataPack(request.WorldFolder);
+            var resolver = AssetPackResolver.TryCreate(request.MinecraftJarPath, resourcePack, dataPack, out var resolverError);
+            if (resolver == null)
             {
-                result.Message = "[Minecraft2VRChat] Minecraft version jar not found for model lookup.";
+                result.Message = resolverError;
                 return result;
             }
 
-            using var zip = ZipFile.OpenRead(request.MinecraftJarPath);
-            var openedZips = new List<ZipArchive>();
-            try
+            using (resolver)
             {
-                var jarReader = new ZipAssetReader(zip);
-                var resourceReader = BuildAssetReader(request.ResourcePack, openedZips);
-                var dataReader = BuildAssetReader(request.DataPack, openedZips);
-                var modelReader = resourceReader != null
-                    ? new AssetReaderChain(resourceReader, jarReader)
-                    : new AssetReaderChain(jarReader);
-                var biomeReader = dataReader != null
-                    ? new AssetReaderChain(dataReader, jarReader)
-                    : new AssetReaderChain(jarReader);
-                var biomeRegistry = new BiomeRegistry(biomeReader);
+                var biomeRegistry = new BiomeRegistry(resolver.BiomeReader);
 
                 var blockStates = new List<BlockStateKey> { BlockStateKey.Empty };
                 var blocks = new int[volume];
@@ -89,15 +80,15 @@ namespace M2V.Editor.Meshing
                     return result;
                 }
 
-                var repository = _modelRepositoryFactory(modelReader);
+                var repository = _modelRepositoryFactory(resolver.ModelReader);
                 var modelCache = repository.BuildBlockModels(blockStates);
                 var fullCubeById = repository.BuildFullCubeFlags(modelCache);
                 var texturePaths = repository.CollectTexturePaths(modelCache);
 
-                var tintResolver = new BlockTintResolver(modelReader, biomeRegistry);
+                var tintResolver = new BlockTintResolver(resolver.ModelReader, biomeRegistry);
                 var tintByBlock = tintResolver.BuildTintByBlock(blocks, sizeX, sizeY, sizeZ, blockStates, biomes);
 
-                result.AtlasTexture = _atlasBuilder.BuildTextureAtlasFromTextures(modelReader, texturePaths, out var uvByTexture, out var alphaByTexture);
+                result.AtlasTexture = _atlasBuilder.BuildTextureAtlasFromTextures(resolver.ModelReader, texturePaths, out var uvByTexture, out var alphaByTexture);
                 if (result.AtlasTexture == null)
                 {
                     result.Message = "[Minecraft2VRChat] Failed to build texture atlas from models.";
@@ -113,50 +104,6 @@ namespace M2V.Editor.Meshing
 
                 return result;
             }
-            finally
-            {
-                foreach (var extra in openedZips)
-                {
-                    extra?.Dispose();
-                }
-            }
-        }
-
-        private static IAssetReader BuildAssetReader(FileSystemInfo pack, List<ZipArchive> openedZips)
-        {
-            if (pack == null)
-            {
-                return null;
-            }
-
-            if (pack is FileInfo fileInfo)
-            {
-                if (!fileInfo.Exists)
-                {
-                    return null;
-                }
-
-                if (string.Equals(fileInfo.Extension, ".zip", StringComparison.OrdinalIgnoreCase))
-                {
-                    var zip = ZipFile.OpenRead(fileInfo.FullName);
-                    openedZips.Add(zip);
-                    return new ZipAssetReader(zip);
-                }
-
-                return null;
-            }
-
-            if (pack is DirectoryInfo dirInfo)
-            {
-                if (!dirInfo.Exists)
-                {
-                    return null;
-                }
-
-                return new FolderAssetReader(dirInfo);
-            }
-
-            return null;
         }
 
         private static void LogSolidSliceStats(int[] blocks, int sizeX, int sizeY, int sizeZ, Vector3Int min)
@@ -195,6 +142,44 @@ namespace M2V.Editor.Meshing
             }
 
             return false;
+        }
+
+        private static FileSystemInfo ResolveWorldResourcePack(string worldFolder)
+        {
+            if (string.IsNullOrEmpty(worldFolder))
+            {
+                return null;
+            }
+
+            var zipPath = Path.Combine(worldFolder, "resources.zip");
+            if (File.Exists(zipPath))
+            {
+                return new FileInfo(zipPath);
+            }
+
+            var folderPath = Path.Combine(worldFolder, "resources");
+            if (Directory.Exists(folderPath))
+            {
+                return new DirectoryInfo(folderPath);
+            }
+
+            return null;
+        }
+
+        private static FileSystemInfo ResolveWorldDataPack(string worldFolder)
+        {
+            if (string.IsNullOrEmpty(worldFolder))
+            {
+                return null;
+            }
+
+            var folderPath = Path.Combine(worldFolder, "datapacks");
+            if (Directory.Exists(folderPath))
+            {
+                return new DirectoryInfo(folderPath);
+            }
+
+            return null;
         }
     }
 }

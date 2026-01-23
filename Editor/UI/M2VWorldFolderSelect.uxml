@@ -1,143 +1,128 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UXML xmlns="UnityEngine.UIElements">
-    <VisualElement name="root" class="minecraft-root">
-        <VisualElement class="launcher-shell">
-            <VisualElement class="launcher-topbar">
-                <Label text="ENGLISH - US" class="topbar-item" />
-                <VisualElement class="topbar-spacer" />
-                <Label text="STEVE" class="topbar-item" />
-                <Label text="HELP" class="topbar-item" />
+    <VisualElement name="root" class="m2v-root">
+        <VisualElement class="m2v-shell">
+            <VisualElement class="m2v-topbar">
+                <VisualElement name="languageHost" class="m2v-topbar-dropdown-host" />
+                <VisualElement class="m2v-topbar-spacer" />
+                <Label name="topbarUser" text="STEVE" class="m2v-topbar-item" />
+                <Label name="topbarHelp" text="HELP" class="m2v-topbar-item" />
             </VisualElement>
 
-            <VisualElement class="launcher-header">
-                <Label text="MINECRAFT2VRCHAT" class="title" />
-                <Label text="Java World Importer" class="subtitle" />
+            <VisualElement class="m2v-header">
+                <Label name="titleLabel" text="MINECRAFT2VRCHAT" class="m2v-title" />
+                <Label name="subm2v-titleLabel" text="Java World Importer" class="subm2v-title" />
             </VisualElement>
 
-            <VisualElement class="launcher-tabs">
-                <Label name="stepWorld" text="Worlds" class="tab tab-active" />
-                <Label name="stepRange" text="Range" class="tab" />
-                <Label name="stepGenerate" text="Generate" class="tab" />
+            <VisualElement class="m2v-tabs">
+                <Label name="stepWorld" text="Worlds" class="m2v-tab m2v-tab--active" />
+                <Label name="stepRange" text="Range" class="m2v-tab" />
+                <Label name="stepGenerate" text="Generate" class="m2v-tab" />
             </VisualElement>
 
-            <VisualElement class="launcher-body">
-                <VisualElement name="pageWorld" class="page">
-                    <VisualElement class="panel">
-                        <VisualElement class="section-row">
-                            <Label text="Worlds" class="section-title big-title" />
-                            <Button name="reloadButton" text="Reload" class="mc-button small-button" />
+            <VisualElement class="m2v-body">
+                <VisualElement name="pageWorld" class="m2v-page">
+                    <VisualElement class="m2v-panel">
+                        <VisualElement class="m2v-section-row">
+                            <Label name="worldsTitle" text="Worlds" class="m2v-section-title m2v-title--big" />
+                            <Button name="reloadButton" text="Reload" class="m2v-button m2v-button--small" />
                         </VisualElement>
-                        <VisualElement class="hero">
-                            <Label text="Minecraft 2 VRChat importer" class="hero-caption" />
-                        </VisualElement>
-                        <VisualElement class="list-frame">
-                            <ListView name="worldList" class="world-list" />
+                        <VisualElement class="m2v-list-frame">
+                            <VisualElement class="m2v-dropzone">
+                                <Label name="worldTipLabel" text="Tip: Drag &amp; drop a world folder here" class="m2v-hint m2v-dropzone-text" />
+                                <Button name="customImportButton" text="Select Custom Folder..." class="m2v-button m2v-button--small" />
+                            </VisualElement>
+                            <ListView name="worldList" class="m2v-world-list" />
                         </VisualElement>
 
-                        <Label name="statusLabel" text="No folder selected." class="status" />
-                        <Label text="Tip: Drag &amp; drop a world folder here" class="hint" />
-
-                        <VisualElement class="divider" />
-                        <VisualElement class="wizard-spacer" />
-                        <VisualElement class="button-row wizard-footer">
-                            <Button name="customImportButton" text="Select Custom Folder..." class="mc-button" />
-                            <Button name="nextButtonWorld" text="Next" class="mc-button primary" />
+                        <Label name="statusLabel" text="No folder selected." class="m2v-status" />
+                        <VisualElement class="m2v-divider" />
+                        <VisualElement class="m2v-wizard-spacer" />
+                        <VisualElement class="m2v-button-row m2v-wizard-footer">
+                            <Button name="nextButtonWorld" text="Next" class="m2v-button primary" />
                         </VisualElement>
                     </VisualElement>
                 </VisualElement>
 
-                <VisualElement name="pageRange" class="page">
-                    <VisualElement class="panel">
-                        <VisualElement class="hero hero-compact">
-                            <Label text="Select a coordinate range" class="hero-caption" />
+                <VisualElement name="pageRange" class="m2v-page">
+                    <VisualElement class="m2v-panel">
+                        <Label name="rangeTitle" text="Range" class="m2v-section-title" />
+                        <Label name="rangeHint" text="Tip: You can edit values directly or adjust around spawn." class="m2v-hint" />
+                        <VisualElement class="m2v-coord-row">
+                            <Label name="rangeMinLabel" text="Min" class="m2v-coord-label" />
+                            <IntegerField name="minXField" class="m2v-coord-field" label="X" />
+                            <IntegerField name="minYField" class="m2v-coord-field" label="Y" />
+                            <IntegerField name="minZField" class="m2v-coord-field" label="Z" />
                         </VisualElement>
-                        <Label text="Range" class="section-title" />
-                        <VisualElement class="coord-row">
-                            <Label text="Min" class="coord-label" />
-                            <IntegerField name="minXField" class="coord-field" label="X" />
-                            <IntegerField name="minYField" class="coord-field" label="Y" />
-                            <IntegerField name="minZField" class="coord-field" label="Z" />
+                        <VisualElement class="m2v-coord-row">
+                            <Label name="rangeMaxLabel" text="Max" class="m2v-coord-label" />
+                            <IntegerField name="maxXField" class="m2v-coord-field" label="X" />
+                            <IntegerField name="maxYField" class="m2v-coord-field" label="Y" />
+                            <IntegerField name="maxZField" class="m2v-coord-field" label="Z" />
                         </VisualElement>
-                        <VisualElement class="coord-row">
-                            <Label text="Max" class="coord-label" />
-                            <IntegerField name="maxXField" class="coord-field" label="X" />
-                            <IntegerField name="maxYField" class="coord-field" label="Y" />
-                            <IntegerField name="maxZField" class="coord-field" label="Z" />
-                        </VisualElement>
-                        <VisualElement class="coord-row">
-                            <Label text="Dimension" class="coord-label" />
-                            <VisualElement class="dimension-group">
-                                <RadioButton name="dimensionOverworld" text="Overworld" class="dimension-radio" />
-                                <RadioButton name="dimensionNether" text="Nether" class="dimension-radio" />
-                                <RadioButton name="dimensionEnd" text="End" class="dimension-radio" />
+                        <VisualElement class="m2v-coord-row">
+                            <Label name="rangeDimensionLabel" text="Dimension" class="m2v-coord-label" />
+                            <VisualElement class="m2v-dimension-group">
+                                <Button name="dimensionOverworldButton" class="m2v-dimension-button">
+                                    <Image name="dimensionOverworldIcon" class="m2v-dimension-icon" />
+                                    <Label name="dimensionOverworldLabel" text="Overworld" class="m2v-dimension-text" />
+                                </Button>
+                                <Button name="dimensionNetherButton" class="m2v-dimension-button">
+                                    <Image name="dimensionNetherIcon" class="m2v-dimension-icon" />
+                                    <Label name="dimensionNetherLabel" text="Nether" class="m2v-dimension-text" />
+                                </Button>
+                                <Button name="dimensionEndButton" class="m2v-dimension-button">
+                                    <Image name="dimensionEndIcon" class="m2v-dimension-icon" />
+                                    <Label name="dimensionEndLabel" text="End" class="m2v-dimension-text" />
+                                </Button>
                             </VisualElement>
                         </VisualElement>
 
-                        <VisualElement class="divider" />
-                        <VisualElement class="wizard-spacer" />
-                        <VisualElement class="button-row wizard-footer">
-                            <Button name="backButtonRange" text="Back" class="mc-button" />
-                            <Button name="nextButtonRange" text="Next" class="mc-button primary" />
+                        <VisualElement class="m2v-divider" />
+                        <VisualElement class="m2v-wizard-spacer" />
+                        <VisualElement class="m2v-button-row m2v-wizard-footer">
+                            <Button name="backButtonRange" text="Back" class="m2v-button" />
+                            <Button name="nextButtonRange" text="Next" class="m2v-button primary" />
                         </VisualElement>
                     </VisualElement>
                 </VisualElement>
 
-                <VisualElement name="pageGenerate" class="page">
-                    <VisualElement class="panel">
-                        <VisualElement class="hero hero-compact">
-                            <Label text="Ready to generate" class="hero-caption" />
-                        </VisualElement>
-                        <Label text="Generate" class="section-title" />
-                        <Label text="Run import and mesh generation for the selected world." class="hint" />
-
-                        <VisualElement class="pack-section">
-                            <Label text="Optional packs" class="section-title" />
-                            <Label text="Resource packs replace textures/models. Data packs override biome data." class="hint" />
-                            <VisualElement class="pack-entry">
-                                <Label text="Resource Pack" class="pack-title" />
-                                <Label name="resourcePackValue" text="Using Minecraft jar assets." class="pack-value" />
-                                <VisualElement class="pack-actions">
-                                    <Button name="resourcePackZipButton" text="Choose .zip" class="mc-button small-button" />
-                                    <Button name="resourcePackFolderButton" text="Choose folder" class="mc-button small-button" />
-                                    <Button name="resourcePackClearButton" text="Clear" class="mc-button small-button" />
-                                </VisualElement>
-                            </VisualElement>
-                            <VisualElement class="pack-entry">
-                                <Label text="Data Pack" class="pack-title" />
-                                <Label name="dataPackValue" text="Using Minecraft jar data." class="pack-value" />
-                                <VisualElement class="pack-actions">
-                                    <Button name="dataPackZipButton" text="Choose .zip" class="mc-button small-button" />
-                                    <Button name="dataPackFolderButton" text="Choose folder" class="mc-button small-button" />
-                                    <Button name="dataPackClearButton" text="Clear" class="mc-button small-button" />
-                                </VisualElement>
-                            </VisualElement>
+                <VisualElement name="pageGenerate" class="m2v-page">
+                    <VisualElement class="m2v-panel">
+                        <Label name="generateTitle" text="Generate" class="m2v-section-title" />
+                        <Label name="generateHint" text="Run import and mesh generation for the selected world." class="m2v-hint" />
+                        <VisualElement class="m2v-summary">
+                            <Label name="summaryWorld" text="World: -" class="m2v-summary-item" />
+                            <Label name="summaryRange" text="Range: -" class="m2v-summary-item" />
+                            <Label name="summaryDimension" text="Dimension: -" class="m2v-summary-item" />
+                            <Label name="summaryPacks" text="Packs: -" class="m2v-summary-item" />
                         </VisualElement>
 
-                        <VisualElement class="button-row">
-                            <Button name="openButton" text="Open Folder" class="mc-button" />
-                            <Button name="clearButton" text="Clear" class="mc-button" />
+                        <VisualElement class="m2v-button-row">
+                            <Button name="openButton" text="Open Folder" class="m2v-button" />
+                            <Button name="clearButton" text="Clear" class="m2v-button" />
                         </VisualElement>
 
-                        <VisualElement class="play-bar">
-                            <Label text="Ready to build" class="play-caption" />
-                            <Button name="meshButton" text="GENERATE" class="play-button" />
+                        <VisualElement class="m2v-play-bar">
+                            <Label name="playCaption" text="Ready to build" class="m2v-play-caption" />
+                            <Button name="meshButton" text="GENERATE" class="m2v-play-button" />
                         </VisualElement>
 
-                        <VisualElement class="divider" />
-                        <VisualElement class="wizard-spacer" />
-                        <VisualElement class="button-row wizard-footer">
-                            <Button name="backButtonGenerate" text="Back" class="mc-button" />
+                        <VisualElement class="m2v-divider" />
+                        <VisualElement class="m2v-wizard-spacer" />
+                        <VisualElement class="m2v-button-row m2v-wizard-footer">
+                            <Button name="backButtonGenerate" text="Back" class="m2v-button" />
                         </VisualElement>
                     </VisualElement>
                 </VisualElement>
             </VisualElement>
 
-            <VisualElement name="loadingOverlay" class="loading-overlay">
-                <VisualElement class="loading-panel">
-                    <Label text="Loading..." class="loading-title" />
-                    <Label name="loadingStatusLabel" text="Preparing" class="loading-status" />
-                    <VisualElement class="loading-bar-frame">
-                        <VisualElement name="loadingBar" class="loading-bar" />
+            <VisualElement name="loadingOverlay" class="m2v-loading-overlay">
+                <VisualElement class="m2v-loading-panel">
+                    <Label name="loadingTitle" text="Loading..." class="m2v-loading-title" />
+                    <Label name="loadingStatusLabel" text="Preparing" class="m2v-loading-status" />
+                    <VisualElement class="m2v-loading-bar-frame">
+                        <VisualElement name="loadingBar" class="m2v-loading-bar" />
                     </VisualElement>
                 </VisualElement>
             </VisualElement>
