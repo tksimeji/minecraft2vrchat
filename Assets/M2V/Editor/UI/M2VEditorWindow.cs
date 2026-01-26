@@ -595,6 +595,23 @@ namespace M2V.Editor
 
             filter.sharedMesh = mesh;
             ApplyAtlasMaterial(renderer, atlasTexture, mesh);
+            var colliderChild = go.transform.Find("M2V_Collider");
+            if (colliderChild == null)
+            {
+                var childObject = new GameObject("M2V_Collider");
+                childObject.transform.SetParent(go.transform, false);
+                colliderChild = childObject.transform;
+            }
+
+            var collider = colliderChild.GetComponent<MeshCollider>();
+            if (collider == null)
+            {
+                collider = colliderChild.gameObject.AddComponent<MeshCollider>();
+            }
+
+            collider.sharedMesh = null;
+            collider.sharedMesh = mesh;
+            collider.convex = false;
 
             Selection.activeObject = go;
             var modeLabel = options.UseGreedy ? "Greedy" : "Naive";
