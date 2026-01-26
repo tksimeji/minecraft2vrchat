@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using M2V.Editor.Model;
+using M2V.Editor.World.Block;
 using UnityEngine;
 
 namespace M2V.Editor.Meshing
@@ -11,15 +12,9 @@ namespace M2V.Editor.Meshing
         Translucent
     }
 
-    internal interface IBlockStateSource
-    {
-        bool FillBlockStateIds(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, int[] blocks, int[] biomes, int sizeX, int sizeY, int sizeZ, List<BlockStateKey> states, BiomeRegistry biomeRegistry, ref bool logChunkOnce, bool logPaletteBounds);
-        long CountBlocksInRange(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, ref bool logChunkOnce);
-    }
-
     internal interface IModelRepository
     {
-        List<List<ModelPlacement>> BuildBlockModels(List<BlockStateKey> states);
+        List<List<ModelPlacement>> BuildBlockModels(List<BlockState> states);
         List<bool> BuildFullCubeFlags(List<List<ModelPlacement>> modelCache);
         HashSet<string> CollectTexturePaths(List<List<ModelPlacement>> modelCache);
     }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using M2V.Editor.Model;
+using M2V.Editor.World.Block;
 using UnityEngine;
 
 namespace M2V.Editor.Meshing
@@ -30,7 +31,7 @@ namespace M2V.Editor.Meshing
         }
 
         internal Color32[] BuildTintByBlock(int[] blocks, int sizeX, int sizeY, int sizeZ,
-            IReadOnlyList<BlockStateKey> states, int[] biomes)
+            IReadOnlyList<BlockState> states, int[] biomes)
         {
             var total = blocks.Length;
             var tints = new Color32[total];

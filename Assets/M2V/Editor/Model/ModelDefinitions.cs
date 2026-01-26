@@ -10,13 +10,14 @@ namespace M2V.Editor.Model
         [property: JsonProperty("multipart")] List<Multipart> Multipart
     )
     {
-        internal List<ModelPlacement> ResolvePlacements(BlockStateKey state, Func<string, BlockModel> resolveModel)
+        internal List<ModelPlacement> ResolvePlacements(string blockName, Dictionary<string, string> properties,
+            Func<string, BlockModel> resolveModel)
         {
             var result = new List<ModelPlacement>();
 
             if (Variants != null)
             {
-                var best = FindBestVariant(Variants, state.Properties);
+                var best = FindBestVariant(Variants, properties);
                 if (best != null)
                 {
                     AddPlacements(result, best, resolveModel);
@@ -27,7 +28,7 @@ namespace M2V.Editor.Model
             {
                 foreach (var entry in Multipart)
                 {
-                    if (entry != null && entry.Matches(state.Properties))
+                    if (entry != null && entry.Matches(properties))
                     {
                         AddPlacements(result, entry.Apply, resolveModel);
                     }

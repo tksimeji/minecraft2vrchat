@@ -1,3 +1,6 @@
+using System.IO;
+using M2V.Editor.World;
+using M2V.Editor.World.Block;
 using UnityEngine;
 using M2V.Editor.Meshing;
 
@@ -37,17 +40,91 @@ namespace M2V.Editor
 
         public static long CountBlocksInRange(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max, ref bool logChunkOnce)
         {
-            var blockSource = new WorldBlockSource();
-            return blockSource.CountBlocksInRange(worldFolder, dimensionId, min, max, ref logChunkOnce);
+            var world = World.World.Of(new DirectoryInfo(worldFolder));
+            if (world == null)
+            {
+                return 0;
+            }
+
+            if (!world.HasRegionData(dimensionId))
+            {
+                return 0;
+            }
+
+            var chunkMinX = FloorDiv(min.x, 16);
+            var chunkMaxX = FloorDiv(max.x, 16);
+            var chunkMinZ = FloorDiv(min.z, 16);
+            var chunkMaxZ = FloorDiv(max.z, 16);
+
+            long count = 0;
+            for (var cx = chunkMinX; cx <= chunkMaxX; cx++)
+            {
+                for (var cz = chunkMinZ; cz <= chunkMaxZ; cz++)
+                {
+                    var chunk = world.GetChunkAt(dimensionId, cx, cz);
+                    if (chunk == null)
+                    {
+                        continue;
+                    }
+
+                    if (logChunkOnce)
+                    {
+                        logChunkOnce = false;
+                        Debug.Log($"[Minecraft2VRChat] Chunk NBT (sample):\n{chunk}");
+                    }
+
+                    var sections = chunk.Sections;
+                    if (sections == null || sections.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var chunkMinXWorld = cx * 16;
+                    var chunkMinZWorld = cz * 16;
+
+                    foreach (var section in sections)
+                    {
+                        if (section == null)
+                        {
+                            continue;
+                        }
+
+                        count += section.CountSolidBlocksInRange(chunkMinXWorld, chunkMinZWorld, min, max, IsAirBlock);
+                    }
+                }
+            }
+
+            return count;
         }
 
         private static MeshingUseCase CreateUseCase()
         {
             return new MeshingUseCase(
-                new WorldBlockSource(),
                 new ModelMeshBuilder(),
                 new TextureAtlasBuilder(),
                 assets => new ModelRepository(assets));
+        }
+
+        private static bool IsAirBlock(BlockState state)
+        {
+            var name = state?.Name;
+            if (string.IsNullOrEmpty(name))
+            {
+                return true;
+            }
+
+            return name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air";
+        }
+
+        private static int FloorDiv(int value, int divisor)
+        {
+            var result = value / divisor;
+            if ((value ^ divisor) < 0 && value % divisor != 0)
+            {
+                result--;
+            }
+
+            return result;
         }
     }
 }

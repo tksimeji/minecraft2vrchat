@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using M2V.Editor.Model;
+using M2V.Editor.World.Block;
 
 namespace M2V.Editor.Meshing
 {
@@ -12,7 +13,7 @@ namespace M2V.Editor.Meshing
             _resolver = new ModelResolver(assets);
         }
 
-        public List<List<ModelPlacement>> BuildBlockModels(List<BlockStateKey> states)
+        public List<List<ModelPlacement>> BuildBlockModels(List<BlockState> states)
         {
             return _resolver.BuildBlockModels(states);
         }

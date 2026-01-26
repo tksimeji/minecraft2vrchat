@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using fNbt;
 using Newtonsoft.Json;
+using M2V.Editor.World.Block;
 
 namespace M2V.Editor.Model
 {
@@ -20,7 +23,7 @@ namespace M2V.Editor.Model
             _assets = assets;
         }
 
-        internal List<List<ModelPlacement>> BuildBlockModels(List<BlockStateKey> states)
+        internal List<List<ModelPlacement>> BuildBlockModels(List<BlockState> states)
         {
             var result = new List<List<ModelPlacement>>(states.Count) { new List<ModelPlacement>() };
             for (var i = 1; i < states.Count; i++)
@@ -57,16 +60,17 @@ namespace M2V.Editor.Model
             return textures;
         }
 
-        private List<ModelPlacement> ResolvePlacements(BlockStateKey state)
+        private List<ModelPlacement> ResolvePlacements(BlockState state)
         {
-            var blockName = state.NameWithoutNamespace;
+            var blockName = StripMinecraftNamespace(state?.Name);
             var blockState = LoadBlockState(blockName);
             if (blockState == null)
             {
                 return new List<ModelPlacement> { CreatePlacement(ResolveModel($"minecraft:block/{blockName}")) };
             }
 
-            var placements = blockState.ResolvePlacements(state, ResolveModel);
+            var properties = ConvertProperties(state?.Properties);
+            var placements = blockState.ResolvePlacements(blockName, properties, ResolveModel);
             if (placements.Count == 0)
             {
                 placements.Add(CreatePlacement(ResolveModel($"minecraft:block/{blockName}")));
@@ -189,6 +193,55 @@ namespace M2V.Editor.Model
                     }
                 }
             }
+        }
+
+        private static string StripMinecraftNamespace(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return string.Empty;
+            }
+
+            return name.StartsWith("minecraft:", StringComparison.Ordinal)
+                ? name.Substring("minecraft:".Length)
+                : name;
+        }
+
+        private static Dictionary<string, string> ConvertProperties(IReadOnlyDictionary<string, NbtTag> properties)
+        {
+            if (properties == null || properties.Count == 0)
+            {
+                return new Dictionary<string, string>(StringComparer.Ordinal);
+            }
+
+            var result = new Dictionary<string, string>(properties.Count, StringComparer.Ordinal);
+            foreach (var kvp in properties)
+            {
+                result[kvp.Key] = FormatNbtValue(kvp.Value);
+            }
+
+            return result;
+        }
+
+        private static string FormatNbtValue(NbtTag tag)
+        {
+            if (tag == null)
+            {
+                return string.Empty;
+            }
+
+            return tag switch
+            {
+                NbtString str => str.Value ?? string.Empty,
+                NbtByte b => b.Value == 0 ? "false" :
+                    b.Value == 1 ? "true" : b.Value.ToString(CultureInfo.InvariantCulture),
+                NbtShort s => s.Value.ToString(CultureInfo.InvariantCulture),
+                NbtInt i => i.Value.ToString(CultureInfo.InvariantCulture),
+                NbtLong l => l.Value.ToString(CultureInfo.InvariantCulture),
+                NbtFloat f => f.Value.ToString(CultureInfo.InvariantCulture),
+                NbtDouble d => d.Value.ToString(CultureInfo.InvariantCulture),
+                _ => tag.ToString()
+            };
         }
 
         private static ModelPlacement CreatePlacement(BlockModel model)

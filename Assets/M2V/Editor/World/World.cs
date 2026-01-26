@@ -156,7 +156,7 @@ namespace M2V.Editor.World
             return region?.GetChunkAt(chunkX, chunkZ);
         }
 
-        private Chunk? GetChunkAt(string dimensionId, int chunkX, int chunkZ)
+        public Chunk? GetChunkAt(string dimensionId, int chunkX, int chunkZ)
         {
             var region = GetRegionAt(dimensionId, chunkX, chunkZ);
             return region?.GetChunkAt(chunkX, chunkZ);

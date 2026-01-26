@@ -2,20 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using M2V.Editor.Model;
+using M2V.Editor.World;
+using M2V.Editor.World.Block;
 using UnityEngine;
 
 namespace M2V.Editor.Meshing
 {
     internal sealed class MeshingUseCase
     {
-        private readonly IBlockStateSource _blockStateSource;
         private readonly IMeshBuilder _meshBuilder;
         private readonly ITextureAtlasBuilder _atlasBuilder;
         private readonly Func<IAssetReader, IModelRepository> _modelRepositoryFactory;
 
-        internal MeshingUseCase(IBlockStateSource blockStateSource, IMeshBuilder meshBuilder, ITextureAtlasBuilder atlasBuilder, Func<IAssetReader, IModelRepository> modelRepositoryFactory)
+        internal MeshingUseCase(IMeshBuilder meshBuilder, ITextureAtlasBuilder atlasBuilder, Func<IAssetReader, IModelRepository> modelRepositoryFactory)
         {
-            _blockStateSource = blockStateSource;
             _meshBuilder = meshBuilder;
             _atlasBuilder = atlasBuilder;
             _modelRepositoryFactory = modelRepositoryFactory;
@@ -54,12 +54,17 @@ namespace M2V.Editor.Meshing
             {
                 var biomeRegistry = new BiomeRegistry(resolver.BiomeReader);
 
-                var blockStates = new List<BlockStateKey> { BlockStateKey.Empty };
+                var blockStates = new List<BlockState> { BlockState.Air };
+                var blockStateIds = new Dictionary<BlockState, int>
+                {
+                    [BlockState.Air] = 0
+                };
                 var blocks = new int[volume];
                 var biomes = new int[volume];
                 Array.Fill(biomes, biomeRegistry.PlainsIndex);
                 var logChunkOnce = result.LogChunkOnce;
-                if (!_blockStateSource.FillBlockStateIds(request.WorldFolder, request.DimensionId, request.Min, request.Max, blocks, biomes, sizeX, sizeY, sizeZ, blockStates, biomeRegistry, ref logChunkOnce, request.Options.LogPaletteBounds))
+                if (!TryFillBlockStateIds(request.WorldFolder, request.DimensionId, request.Min, request.Max, blocks, biomes,
+                        sizeX, sizeY, sizeZ, blockStates, blockStateIds, biomeRegistry, ref logChunkOnce, request.Options.LogPaletteBounds))
                 {
                     result.Message = "[Minecraft2VRChat] Failed to read blocks for meshing (region folder missing or read failure).";
                     result.LogChunkOnce = logChunkOnce;
@@ -144,6 +149,118 @@ namespace M2V.Editor.Meshing
             return false;
         }
 
+        private static bool TryFillBlockStateIds(string worldFolder, string dimensionId, Vector3Int min, Vector3Int max,
+            int[] blocks, int[] biomes, int sizeX, int sizeY, int sizeZ, List<BlockState> states,
+            Dictionary<BlockState, int> stateIdsByKey,
+            BiomeRegistry biomeRegistry, ref bool logChunkOnce, bool logPaletteBounds)
+        {
+            var world = World.World.Of(new DirectoryInfo(worldFolder));
+            if (world == null)
+            {
+                return false;
+            }
+
+            if (!world.HasRegionData(dimensionId))
+            {
+                Debug.LogWarning($"[Minecraft2VRChat] Region data not found for dimension: {dimensionId}");
+                return false;
+            }
+
+            var chunkMinX = FloorDiv(min.x, 16);
+            var chunkMaxX = FloorDiv(max.x, 16);
+            var chunkMinZ = FloorDiv(min.z, 16);
+            var chunkMaxZ = FloorDiv(max.z, 16);
+
+            for (var cx = chunkMinX; cx <= chunkMaxX; cx++)
+            {
+                for (var cz = chunkMinZ; cz <= chunkMaxZ; cz++)
+                {
+                    var chunk = world.GetChunkAt(dimensionId, cx, cz);
+                    if (chunk == null)
+                    {
+                        continue;
+                    }
+
+                    if (logChunkOnce)
+                    {
+                        logChunkOnce = false;
+                        Debug.Log($"[Minecraft2VRChat] Chunk NBT (sample):\n{chunk}");
+                    }
+
+                    var sections = chunk.Sections;
+                    if (sections == null || sections.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var chunkMinXWorld = cx * 16;
+                    var chunkMinZWorld = cz * 16;
+
+                    foreach (var section in sections)
+                    {
+                        if (section == null)
+                        {
+                            continue;
+                        }
+
+                        if (biomes != null && biomeRegistry != null)
+                        {
+                            section.FillBiomes(chunkMinXWorld, chunkMinZWorld, min, max, biomes, sizeX, sizeY, sizeZ,
+                                biomeRegistry.GetBiomeIndex, biomeRegistry.PlainsIndex);
+                        }
+
+                        section.FillBlocks(chunkMinXWorld, chunkMinZWorld, min, max, blocks, sizeX, sizeY, sizeZ,
+                            state => GetOrCreateBlockStateId(states, stateIdsByKey, state), IsAirBlock, out var invalidCount, out var totalCount);
+
+                        if (logPaletteBounds && invalidCount > 0)
+                        {
+                            Debug.LogWarning(
+                                $"[Minecraft2VRChat] Palette index out of range: {invalidCount}/{totalCount} (palette {section.BlockStatePalette?.Count ?? 0}, chunk {cx},{cz}, sectionY {section.Y}).");
+                        }
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        private static int GetOrCreateBlockStateId(List<BlockState> states, Dictionary<BlockState, int> stateIdsByKey, BlockState entry)
+        {
+            var name = entry?.Name;
+            if (string.IsNullOrEmpty(name) || IsAirBlock(entry))
+            {
+                return 0;
+            }
+
+            if (stateIdsByKey != null && stateIdsByKey.TryGetValue(entry, out var existing))
+            {
+                return existing;
+            }
+
+            var id = states.Count;
+            states.Add(entry);
+            if (stateIdsByKey != null)
+            {
+                stateIdsByKey[entry] = id;
+            }
+            return id;
+        }
+
+        private static bool IsAirBlock(BlockState state)
+        {
+            return state == null || IsAirBlockName(state.Name);
+        }
+
+        private static bool IsAirBlockName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return true;
+            }
+
+            return name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air";
+        }
+
         private static FileSystemInfo ResolveWorldResourcePack(string worldFolder)
         {
             if (string.IsNullOrEmpty(worldFolder))
@@ -164,6 +281,17 @@ namespace M2V.Editor.Meshing
             }
 
             return null;
+        }
+
+        private static int FloorDiv(int value, int divisor)
+        {
+            var result = value / divisor;
+            if ((value ^ divisor) < 0 && value % divisor != 0)
+            {
+                result--;
+            }
+
+            return result;
         }
 
         private static FileSystemInfo ResolveWorldDataPack(string worldFolder)
