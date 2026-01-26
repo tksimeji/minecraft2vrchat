@@ -1485,15 +1485,30 @@ namespace M2V.Editor
                 return string.Empty;
             }
 
+            var roots = new List<string>();
             var home = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
-            if (string.IsNullOrEmpty(home))
+            if (!string.IsNullOrEmpty(home))
             {
-                return string.Empty;
+                roots.Add(Path.Combine(home, "Library", "Application Support", "minecraft", "versions")); // macOS
+                roots.Add(Path.Combine(home, ".minecraft", "versions")); // Linux
             }
 
-            var versionsRoot = Path.Combine(home, "Library", "Application Support", "minecraft", "versions");
-            var jarPath = Path.Combine(versionsRoot, versionName, $"{versionName}.jar");
-            return File.Exists(jarPath) ? jarPath : string.Empty;
+            var appData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData);
+            if (!string.IsNullOrEmpty(appData))
+            {
+                roots.Add(Path.Combine(appData, ".minecraft", "versions")); // Windows
+            }
+
+            foreach (var root in roots)
+            {
+                var jarPath = Path.Combine(root, versionName, $"{versionName}.jar");
+                if (File.Exists(jarPath))
+                {
+                    return jarPath;
+                }
+            }
+
+            return string.Empty;
         }
 
         private static Shader GetDoubleSidedShader()

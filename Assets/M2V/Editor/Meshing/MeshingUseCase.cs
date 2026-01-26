@@ -100,7 +100,7 @@ namespace M2V.Editor.Meshing
                     return result;
                 }
 
-                result.Mesh = _meshBuilder.BuildModelMesh(blocks, sizeX, sizeY, sizeZ, request.Min, modelCache, fullCubeById, tintByBlock, uvByTexture, alphaByTexture, request.Options.ApplyCoordinateTransform);
+                result.Mesh = _meshBuilder.BuildModelMesh(blocks, sizeX, sizeY, sizeZ, Vector3Int.zero, modelCache, fullCubeById, tintByBlock, uvByTexture, alphaByTexture, request.Options.ApplyCoordinateTransform);
 
                 if (result.Mesh == null)
                 {
