@@ -294,8 +294,15 @@ namespace M2V.Editor.Bakery.Meshing
             vertices.Add(new Float3(v1.x, v1.y, v1.z));
             vertices.Add(new Float3(v2.x, v2.y, v2.z));
             vertices.Add(new Float3(v3.x, v3.y, v3.z));
-            normals.Add(new Float3(normal.x, normal.y, normal.z));
+            var packedNormal = new Float3(normal.x, normal.y, normal.z);
+            normals.Add(packedNormal);
+            normals.Add(packedNormal);
+            normals.Add(packedNormal);
+            normals.Add(packedNormal);
 
+            colors.Add(tint);
+            colors.Add(tint);
+            colors.Add(tint);
             colors.Add(tint);
 
             uvs.Add(new Float2(uvRect.X, uvRect.Y));
@@ -308,6 +315,7 @@ namespace M2V.Editor.Bakery.Meshing
             triangles.Add(index + 2);
             triangles.Add(index + 3);
             triangles.Add(index + 0);
+            triangles.Add(index + 2);
         }
 
         private static Color32Byte ResolveTint(
