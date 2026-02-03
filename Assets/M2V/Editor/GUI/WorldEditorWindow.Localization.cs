@@ -1,12 +1,16 @@
 #nullable enable
 
 using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace M2V.Editor.GUI
 {
     public partial class WorldEditorWindow
     {
+        private const string LanguagePrefKey = "M2V.GUI.Language";
+
         private void ConfigureLanguageDropdown()
         {
             if (_languageDropdown == null && _languageHost != null)
@@ -22,14 +26,35 @@ namespace M2V.Editor.GUI
             }
 
             _languageDropdown.choices = new List<string> { "English", "日本語" };
-            _languageDropdown.value = _state.Language == Language.Japanese ? "日本語" : "English";
+            _state.Language = LoadPreferredLanguage();
+            _languageDropdown.SetValueWithoutNotify(_state.Language == Language.Japanese ? "日本語" : "English");
             _languageDropdown.label = string.Empty;
             _languageDropdown.RegisterValueChangedCallback(evt =>
             {
                 _state.Language = evt.newValue == "日本語" ? Language.Japanese : Language.English;
+                SavePreferredLanguage(_state.Language);
                 ApplyLocalization();
                 UpdateValidation();
             });
+        }
+        private static Language LoadPreferredLanguage()
+        {
+            if (EditorPrefs.HasKey(LanguagePrefKey))
+            {
+                var stored = EditorPrefs.GetString(LanguagePrefKey, "en");
+                return string.Equals(stored, "ja", System.StringComparison.OrdinalIgnoreCase)
+                    ? Language.Japanese
+                    : Language.English;
+            }
+
+            return Application.systemLanguage == SystemLanguage.Japanese
+                ? Language.Japanese
+                : Language.English;
+        }
+        private static void SavePreferredLanguage(Language language)
+        {
+            var value = language == Language.Japanese ? "ja" : "en";
+            EditorPrefs.SetString(LanguagePrefKey, value);
         }
         private void ApplyLocalization()
         {
