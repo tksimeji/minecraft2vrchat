@@ -1,11 +1,7 @@
-using System;
+#nullable enable
+
 using System.Collections.Generic;
-using System.IO;
-using UnityEditor;
-using UnityEngine;
-using M2V.Editor.Bakery.Meshing;
 using UnityEngine.UIElements;
-using Object = UnityEngine.Object;
 
 namespace M2V.Editor.GUI
 {
@@ -42,8 +38,6 @@ namespace M2V.Editor.GUI
             {
                 _rootElement.EnableInClassList("lang-ja", lang == Language.Japanese);
             }
-            SetLabel(_topbarUser, Localization.Keys.TopbarUser, lang);
-            SetLabel(_topbarHelp, Localization.Keys.TopbarHelp, lang);
             SetLabel(_titleLabel, Localization.Keys.Title, lang);
             SetLabel(_subtitleLabel, Localization.Keys.Subtitle, lang);
             SetLabel(_stepWorld, Localization.Keys.TabWorlds, lang);

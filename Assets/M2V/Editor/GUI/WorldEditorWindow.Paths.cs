@@ -1,12 +1,9 @@
-using System;
+#nullable enable
+
 using System.Collections.Generic;
 using System.IO;
-using UnityEditor;
 using UnityEngine;
 using DomainWorld = M2V.Editor.Minecraft.World.World;
-using M2V.Editor.Bakery.Meshing;
-using UnityEngine.UIElements;
-using Object = UnityEngine.Object;
 
 namespace M2V.Editor.GUI
 {
@@ -53,7 +50,7 @@ namespace M2V.Editor.GUI
 
             return DomainWorld.Wrap(new DirectoryInfo(path)) != null;
         }
-        private static DomainWorld ResolveWorld(DirectoryInfo directory)
+        private static DomainWorld? ResolveWorld(DirectoryInfo? directory)
         {
             return directory == null ? null : DomainWorld.Wrap(directory);
         }

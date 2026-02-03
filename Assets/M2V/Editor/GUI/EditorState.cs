@@ -1,3 +1,5 @@
+#nullable enable
+
 using System.Collections.Generic;
 using System.IO;
 using M2V.Editor.Minecraft.World;
@@ -15,8 +17,8 @@ namespace M2V.Editor.GUI
         public int MaxZ = 10;
 
         public readonly List<WorldEntry> WorldEntries = new List<WorldEntry>();
-        public DirectoryInfo CurrentWorldPath;
-        public DirectoryInfo SelectedWorldPath;
+        public DirectoryInfo? CurrentWorldPath;
+        public DirectoryInfo? SelectedWorldPath;
         public LevelStem SelectedLevelStem = LevelStem.Overworld;
         public Language Language = Language.English;
 
@@ -51,7 +53,7 @@ namespace M2V.Editor.GUI
             return SelectedWorldPath?.FullName ?? string.Empty;
         }
 
-        public void SetSelectedWorld(DirectoryInfo directory)
+        public void SetSelectedWorld(DirectoryInfo? directory)
         {
             SelectedWorldPath = directory;
         }
@@ -61,12 +63,12 @@ namespace M2V.Editor.GUI
             SelectedLevelStem = levelStemKey;
         }
 
-        public void SetCurrentWorld(DirectoryInfo directory)
+        public void SetCurrentWorld(DirectoryInfo? directory)
         {
             CurrentWorldPath = directory;
         }
 
-        public World GetSelectedWorld()
+        public World? GetSelectedWorld()
         {
             if (SelectedWorldPath == null)
             {
@@ -93,10 +95,12 @@ namespace M2V.Editor.GUI
             return string.Equals(left, right, System.StringComparison.OrdinalIgnoreCase);
         }
 
-        public void PopulateWorldEntries(string savesPath,
-            System.Func<string, bool> isValidWorld,
-            System.Func<string, WorldMeta> readMeta,
-            System.Func<string, Texture2D> loadIcon)
+        public void PopulateWorldEntries(
+            string savesPath,
+            System.Func<string, bool>? isValidWorld,
+            System.Func<string, WorldMeta>? readMeta,
+            System.Func<string, Texture2D?>? loadIcon
+        )
         {
             WorldEntries.Clear();
             if (string.IsNullOrEmpty(savesPath) || !Directory.Exists(savesPath))
@@ -128,7 +132,7 @@ namespace M2V.Editor.GUI
             }
         }
 
-        public bool TryFindWorldIndex(DirectoryInfo path, out int index)
+        public bool TryFindWorldIndex(DirectoryInfo? path, out int index)
         {
             index = -1;
             if (path == null)
@@ -151,7 +155,7 @@ namespace M2V.Editor.GUI
             return false;
         }
 
-        public bool TrySelectWorld(DirectoryInfo path, out WorldEntry entry)
+        public bool TrySelectWorld(DirectoryInfo? path, out WorldEntry? entry)
         {
             entry = null;
             if (!TryFindWorldIndex(path, out var index))
@@ -187,14 +191,14 @@ namespace M2V.Editor.GUI
 
         public sealed class WorldEntry
         {
-            public DirectoryInfo Path;
-            public string Name;
-            public Texture2D Icon;
+            public DirectoryInfo Path = null!;
+            public string Name = string.Empty;
+            public Texture2D? Icon;
             public bool IsValid;
-            public string FolderName;
-            public string LastPlayed;
-            public string GameMode;
-            public string Version;
+            public string FolderName = string.Empty;
+            public string LastPlayed = string.Empty;
+            public string GameMode = string.Empty;
+            public string Version = string.Empty;
         }
 
         public readonly struct WorldMeta

@@ -1,5 +1,4 @@
-using System;
-using System.Collections.Generic;
+#nullable enable
 
 namespace M2V.Editor.GUI
 {
@@ -22,9 +21,7 @@ namespace M2V.Editor.GUI
         {
             return key switch
             {
-                Keys.TopbarUser => "STEVE",
-                Keys.TopbarHelp => "HELP",
-                Keys.Title => "MINECRAFT2VRCHAT",
+                Keys.Title => "M2V",
                 Keys.Subtitle => "Java World Importer",
                 Keys.TabWorlds => "Worlds",
                 Keys.TabRange => "Range",
@@ -80,9 +77,7 @@ namespace M2V.Editor.GUI
         {
             return key switch
             {
-                Keys.TopbarUser => "STEVE",
-                Keys.TopbarHelp => "ヘルプ",
-                Keys.Title => "MINECRAFT2VRCHAT",
+                Keys.Title => "M2V",
                 Keys.Subtitle => "Java ワールドインポーター",
                 Keys.TabWorlds => "ワールド",
                 Keys.TabRange => "範囲",
@@ -136,8 +131,6 @@ namespace M2V.Editor.GUI
 
         internal static class Keys
         {
-            internal const string TopbarUser = "topbar.user";
-            internal const string TopbarHelp = "topbar.help";
             internal const string Title = "title";
             internal const string Subtitle = "subtitle";
             internal const string TabWorlds = "tab.worlds";

@@ -5,8 +5,6 @@
             <VisualElement class="m2v-topbar">
                 <VisualElement name="languageHost" class="m2v-topbar-dropdown-host" />
                 <VisualElement class="m2v-topbar-spacer" />
-                <Label name="topbarUser" text="STEVE" class="m2v-topbar-item" />
-                <Label name="topbarHelp" text="HELP" class="m2v-topbar-item" />
             </VisualElement>
 
             <VisualElement class="m2v-header">

@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using UnityEditor;
+#nullable enable
+
 using UnityEngine;
-using M2V.Editor.Bakery.Meshing;
 using UnityEngine.UIElements;
-using Object = UnityEngine.Object;
 
 namespace M2V.Editor.GUI
 {
@@ -42,8 +38,6 @@ namespace M2V.Editor.GUI
             _maxZField = rootVisualElement.Q<IntegerField>("maxZField");
             _languageDropdown = rootVisualElement.Q<DropdownField>("languageDropdown");
             _languageHost = rootVisualElement.Q<VisualElement>("languageHost");
-            _topbarUser = rootVisualElement.Q<Label>("topbarUser");
-            _topbarHelp = rootVisualElement.Q<Label>("topbarHelp");
             _titleLabel = rootVisualElement.Q<Label>("titleLabel");
             _subtitleLabel = rootVisualElement.Q<Label>("subtitleLabel");
             _worldsTitle = rootVisualElement.Q<Label>("worldsTitle");
@@ -165,7 +159,7 @@ namespace M2V.Editor.GUI
                 _stepGenerate.RegisterCallback<ClickEvent>(_ => SetPage(2));
             }
         }
-        private bool IsUiReady(Button clearButton, Button customImportButton, Button reloadButton)
+        private bool IsUiReady(Button? clearButton, Button? customImportButton, Button? reloadButton)
         {
             return _statusLabel != null && _worldList != null &&
                    _minXField != null && _minYField != null && _minZField != null &&
@@ -193,7 +187,7 @@ namespace M2V.Editor.GUI
             SetPageActive(_pageRange, pageIndex == 1);
             SetPageActive(_pageGenerate, pageIndex == 2);
         }
-        private static void SetPageActive(VisualElement page, bool active)
+        private static void SetPageActive(VisualElement? page, bool active)
         {
             if (page == null)
             {
@@ -203,7 +197,7 @@ namespace M2V.Editor.GUI
             page.EnableInClassList("active", active);
             page.style.display = active ? DisplayStyle.Flex : DisplayStyle.None;
         }
-        private static void SetStepActive(Label step, bool active)
+        private static void SetStepActive(Label? step, bool active)
         {
             if (step == null)
             {

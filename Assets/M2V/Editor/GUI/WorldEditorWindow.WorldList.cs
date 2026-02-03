@@ -1,10 +1,10 @@
+#nullable enable
+
 using System;
-using System.Collections.Generic;
 using System.IO;
 using fNbt;
 using UnityEditor;
 using UnityEngine;
-using M2V.Editor.Bakery.Meshing;
 using M2V.Editor.Minecraft.World;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -150,20 +150,10 @@ namespace M2V.Editor.GUI
 
             var path = _state.GetSelectedPath();
             var worldDir = _state.GetSelectedWorld();
-            var isValid = _state.IsSelectedWorldValid();
-            if (_openButton != null)
-            {
-                _openButton.SetEnabled(!string.IsNullOrEmpty(path) && Directory.Exists(path));
-            }
-
-            if (_nextWorldButton != null)
-            {
-                _nextWorldButton.SetEnabled(isValid);
-            }
-            if (_meshButton != null)
-            {
-                _meshButton.SetEnabled(isValid);
-            }
+            var isValid = worldDir != null;
+            _openButton?.SetEnabled(!string.IsNullOrEmpty(path) && Directory.Exists(path));
+            _nextWorldButton?.SetEnabled(isValid);
+            _meshButton?.SetEnabled(isValid);
 
             _statusLabel.RemoveFromClassList("ok");
             _statusLabel.RemoveFromClassList("error");
@@ -200,7 +190,7 @@ namespace M2V.Editor.GUI
             _statusLabel.RemoveFromClassList("error");
             _statusLabel.AddToClassList(isOk ? "ok" : "error");
         }
-        private void HandleWorldSelectionChanged(World worldDir, string path)
+        private void HandleWorldSelectionChanged(World? worldDir, string path)
         {
             if (!_state.IsSameAsCurrent(path))
             {
@@ -276,7 +266,7 @@ namespace M2V.Editor.GUI
                 ? Localization.Get(language, Localization.Keys.SummaryResource)
                 : Localization.Get(language, Localization.Keys.SummaryData);
         }
-        private static FileSystemInfo ResolveWorldResourcePack(DirectoryInfo worldDir)
+        private static FileSystemInfo? ResolveWorldResourcePack(DirectoryInfo? worldDir)
         {
             if (worldDir == null || !worldDir.Exists)
             {
@@ -297,7 +287,7 @@ namespace M2V.Editor.GUI
 
             return null;
         }
-        private static FileSystemInfo ResolveWorldDataPack(DirectoryInfo worldDir)
+        private static FileSystemInfo? ResolveWorldDataPack(DirectoryInfo? worldDir)
         {
             if (worldDir == null || !worldDir.Exists)
             {
@@ -312,7 +302,7 @@ namespace M2V.Editor.GUI
 
             return null;
         }
-        private static Texture2D LoadWorldIcon(string worldFolder)
+        private static Texture2D? LoadWorldIcon(string worldFolder)
         {
             var iconPath = Path.Combine(worldFolder, "icon.png");
             if (!File.Exists(iconPath))

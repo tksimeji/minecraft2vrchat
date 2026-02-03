@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
+#nullable enable
+
 using UnityEditor;
 using UnityEngine;
-using M2V.Editor.Bakery.Meshing;
 using M2V.Editor.Minecraft.World;
 using UnityEngine.UIElements;
-using Object = UnityEngine.Object;
 
 namespace M2V.Editor.GUI
 {
@@ -25,7 +22,7 @@ namespace M2V.Editor.GUI
         {
             return _state.SelectedLevelStem;
         }
-        private void ApplySpawnDefaultRange(World worldDir)
+        private void ApplySpawnDefaultRange(World? worldDir)
         {
             var spawn = worldDir?.SpawnPos;
             if (spawn == null)
