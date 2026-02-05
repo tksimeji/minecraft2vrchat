@@ -132,7 +132,7 @@ namespace M2V.Editor.GUI
                 }
 
                 SetLoadingStatus(Localization.Get(_state.Language, Localization.Keys.LoadingApplyingMaterial));
-                var go = MeshInstaller.InstallMesh("WorldMesh", result.Mesh, result.AtlasTexture);
+                var go = MeshInstaller.InstallMesh("WorldMesh", result.Mesh, result.AtlasTexture, result.AtlasAnimation);
 
                 Selection.activeObject = go;
                 var modeLabel = context.UseGreedy ? "Greedy" : "Naive";

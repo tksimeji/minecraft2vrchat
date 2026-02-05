@@ -1,6 +1,5 @@
 #nullable enable
 
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -18,13 +17,16 @@ namespace M2V.Editor.Bakery.Meshing
         private static readonly int ZWriteId = Shader.PropertyToID("_ZWrite");
         private static readonly int CutoffId = Shader.PropertyToID("_Cutoff");
 
-        public static GameObject InstallMesh(string rootName, Mesh mesh, Texture2D? atlasTexture)
+        public static GameObject InstallMesh(string rootName, Mesh mesh, Texture2D? atlasTexture, AtlasAnimation? animation)
         {
             var gameObject = GameObject.Find(rootName) ?? new GameObject(rootName);
-            var filter = gameObject.GetComponent<MeshFilter>() ?? gameObject.AddComponent<MeshFilter>();
-            var renderer = gameObject.GetComponent<MeshRenderer>() ?? gameObject.AddComponent<MeshRenderer>();
+            var filter = EnsureMeshFilter(gameObject, rootName);
+            var renderer = EnsureMeshRenderer(gameObject, rootName);
 
-            filter.sharedMesh = mesh;
+            if (filter != null)
+            {
+                filter.sharedMesh = mesh;
+            }
             ApplyAtlasMaterial(renderer, atlasTexture, mesh);
 
             var colliderChild = EnsureColliderChild(gameObject.transform);
@@ -38,7 +40,55 @@ namespace M2V.Editor.Bakery.Meshing
             collider.sharedMesh = mesh;
             collider.convex = false;
 
+            if (animation != null && atlasTexture != null)
+            {
+                var animator = gameObject.GetComponent<AtlasAnimator>();
+                if (animator == null)
+                {
+                    animator = gameObject.AddComponent<AtlasAnimator>();
+                }
+
+                if (animator != null)
+                {
+                    animator.Initialize(atlasTexture, animation);
+                }
+            }
+
             return gameObject;
+        }
+
+        private static MeshFilter? EnsureMeshFilter(GameObject gameObject, string rootName)
+        {
+            if (!gameObject.TryGetComponent(out MeshFilter filter))
+            {
+                filter = gameObject.AddComponent<MeshFilter>();
+            }
+
+            if (filter != null)
+            {
+                return filter;
+            }
+
+            Object.DestroyImmediate(gameObject);
+            var fallback = new GameObject(rootName);
+            return fallback.AddComponent<MeshFilter>();
+        }
+
+        private static MeshRenderer EnsureMeshRenderer(GameObject gameObject, string rootName)
+        {
+            if (!gameObject.TryGetComponent(out MeshRenderer renderer))
+            {
+                renderer = gameObject.AddComponent<MeshRenderer>();
+            }
+
+            if (renderer != null)
+            {
+                return renderer;
+            }
+
+            Object.DestroyImmediate(gameObject);
+            var fallback = new GameObject(rootName);
+            return fallback.AddComponent<MeshRenderer>();
         }
 
         private static Shader GetDoubleSidedShader()
@@ -81,7 +131,16 @@ namespace M2V.Editor.Bakery.Meshing
 
         private static Shader? FindSupportedShader(params string[] names)
         {
-            return names.Select(Shader.Find).OfType<Shader>().FirstOrDefault(shader => shader.isSupported);
+            foreach (var name in names)
+            {
+                var shader = Shader.Find(name);
+                if (shader != null && shader.isSupported)
+                {
+                    return shader;
+                }
+            }
+
+            return null;
         }
 
         private static Transform EnsureColliderChild(Transform parent)

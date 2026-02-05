@@ -5,13 +5,16 @@ using System.Collections.Generic;
 using M2V.Editor.Bakery.Tinting;
 using M2V.Editor.Minecraft;
 using M2V.Editor.Minecraft.Model;
+using M2V.Editor.Minecraft.World;
 using UnityEngine;
 
 namespace M2V.Editor.Bakery.Meshing
 {
     public sealed class MeshBuilder
     {
-        public sealed record BuildResult(Mesh? Mesh, Texture2D AtlasTexture);
+        private static readonly ResourceLocation FallbackTexture = ResourceLocation.Of("block/dirt");
+
+        public sealed record BuildResult(Mesh? Mesh, Texture2D AtlasTexture, AtlasAnimation? AtlasAnimation);
 
         public static BuildResult Build(
             Volume volume,
@@ -25,6 +28,8 @@ namespace M2V.Editor.Bakery.Meshing
             var blockModelIndex = blockModelResolver.BuildBlockVariants(volume.BlockStates);
             var fullCubeById = blockModelResolver.BuildFullCubeFlags(blockModelIndex);
             var texturePaths = blockModelResolver.CollectTexturePaths(blockModelIndex);
+            texturePaths.Add(FallbackTexture);
+            Fluid.AddFluidTextures(texturePaths, volume.BlockStates);
 
             var tintResolver = new BlockTintResolver(assetReader, biomeIndex);
             var tintByBlock = tintResolver.BuildTintByBlock(volume);
@@ -33,7 +38,8 @@ namespace M2V.Editor.Bakery.Meshing
                 assetReader,
                 texturePaths,
                 out var uvByTexture,
-                out var alphaByTexture
+                out var alphaByTexture,
+                out var atlasAnimation
             );
 
             return new BuildResult(
@@ -48,7 +54,8 @@ namespace M2V.Editor.Bakery.Meshing
                     alphaByTexture,
                     applyCoordinateTransform
                 ),
-                atlasTexture
+                atlasTexture,
+                atlasAnimation
             );
         }
 
@@ -87,10 +94,30 @@ namespace M2V.Editor.Bakery.Meshing
                             continue;
                         }
 
+                        var blockIndex = x + dims[0] * (y + dims[1] * z);
+                        var state = volume.BlockStates[id];
+                        if (Fluid.TryEmit(
+                                state,
+                                blockIndex,
+                                x, y, z,
+                                volume,
+                                tintByBlock,
+                                vertices,
+                                normals,
+                                uvs,
+                                colors,
+                                trianglesSolid,
+                                trianglesTranslucent,
+                                uvByTexture,
+                                alphaByTexture
+                            ))
+                        {
+                            continue;
+                        }
+
                         var variants = blockModelIndex[id];
                         if (variants.Count == 0) continue;
 
-                        var blockIndex = x + dims[0] * (y + dims[1] * z);
                         foreach (var variant in variants)
                         {
                             EmitModel(
@@ -211,6 +238,10 @@ namespace M2V.Editor.Bakery.Meshing
                         )
                     );
                     var texturePath = model.ResolveTexture(face.Texture ?? string.Empty);
+                    if (texturePath.IsEmpty)
+                    {
+                        texturePath = FallbackTexture;
+                    }
                     var uvRect = M2VMathHelper.ResolveUvRect(
                         texturePath, face, variant, uvByTexture, element, direction
                     );

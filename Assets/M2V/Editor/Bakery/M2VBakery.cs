@@ -308,6 +308,7 @@ namespace M2V.Editor.Bakery
             );
             result.AtlasTexture = buildResult.AtlasTexture;
             result.Mesh = buildResult.Mesh;
+            result.AtlasAnimation = buildResult.AtlasAnimation;
 
             if (result.Mesh == null)
             {
@@ -360,11 +361,12 @@ namespace M2V.Editor.Bakery
         public bool LogChunkOnce { get; init; }
     }
 
-    public sealed record Baked
-    {
-        public Mesh? Mesh { get; set; }
-        public Texture2D? AtlasTexture { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public bool LogChunkOnce { get; set; }
-    }
+        public sealed record Baked
+        {
+            public Mesh? Mesh { get; set; }
+            public Texture2D? AtlasTexture { get; set; }
+            public AtlasAnimation? AtlasAnimation { get; set; }
+            public string Message { get; set; } = string.Empty;
+            public bool LogChunkOnce { get; set; }
+        }
 }
