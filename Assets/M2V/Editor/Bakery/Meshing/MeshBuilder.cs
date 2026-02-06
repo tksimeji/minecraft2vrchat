@@ -127,6 +127,7 @@ namespace M2V.Editor.Bakery.Meshing
                             EmitModel(
                                 variant,
                                 blockModelResolver,
+                                blockModelIndex,
                                 blockIndex,
                                 x, y, z,
                                 volume,
@@ -163,6 +164,7 @@ namespace M2V.Editor.Bakery.Meshing
         private static void EmitModel(
             Variant variant,
             BlockModelResolver blockModelResolver,
+            BlockModelIndex blockModelIndex,
             int blockIndex,
             int blockX, int blockY, int blockZ,
             Volume volume,
@@ -235,15 +237,6 @@ namespace M2V.Editor.Bakery.Meshing
                 {
                     if (face == null) continue;
 
-                    if (face.CullFace.HasValue && model.IsFullCube())
-                    {
-                        var cullDirection = M2VMathHelper.RotateDirection(
-                            face.CullFace.Value,
-                            variant.RotationX, variant.RotationY, variant.RotationZ
-                        );
-                        if (IsNeighborFullCube(volume, fullCubeById, blockX, blockY, blockZ, cullDirection)) continue;
-                    }
-
                     var quad = BlockElement.GetFaceQuadCorners(direction, corners);
                     var normal = M2VMathHelper.DirectionToNormal(
                         M2VMathHelper.RotateDirection(
@@ -261,6 +254,20 @@ namespace M2V.Editor.Bakery.Meshing
                         texturePath, face, variant, uvByTexture, element, direction
                     );
                     var alphaMode = ResolveAlphaMode(texturePath, alphaByTexture);
+                    if (face.CullFace.HasValue
+                        && alphaMode == TextureAlphaMode.Opaque
+                        && model.IsFullCube()
+                        && element.IsFullCube)
+                    {
+                        var cullDirection = M2VMathHelper.RotateDirection(
+                            face.CullFace.Value,
+                            variant.RotationX, variant.RotationY, variant.RotationZ
+                        );
+                        if (IsNeighborFullyOpaque(volume, fullCubeById, blockX, blockY, blockZ, cullDirection, blockModelIndex, blockModelResolver, alphaByTexture))
+                        {
+                            continue;
+                        }
+                    }
                     var tint = ResolveTint(face, blockIndex, tintByBlock);
                     var isThinPlane = IsThinPlaneFace(element, direction);
                     if (isThinPlane && ShouldSkipOppositeThinFace(element, direction))
@@ -401,6 +408,76 @@ namespace M2V.Editor.Bakery.Meshing
 
             var id = volume.GetBlockId(nx, ny, nz);
             return id > 0 && id < fullCubeById.Count && fullCubeById[id];
+        }
+
+        private static bool IsNeighborFullyOpaque(
+            Volume volume,
+            List<bool> fullCubeById,
+            int x, int y, int z,
+            Direction direction,
+            BlockModelIndex blockModelIndex,
+            BlockModelResolver blockModelResolver,
+            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture
+        )
+        {
+            if (!IsNeighborFullCube(volume, fullCubeById, x, y, z, direction))
+            {
+                return false;
+            }
+
+            var nx = x;
+            var ny = y;
+            var nz = z;
+            switch (direction)
+            {
+                case Direction.North: nz -= 1; break;
+                case Direction.South: nz += 1; break;
+                case Direction.West: nx -= 1; break;
+                case Direction.East: nx += 1; break;
+                case Direction.Down: ny -= 1; break;
+                case Direction.Up: ny += 1; break;
+                default:
+                    return false;
+            }
+
+            var id = volume.GetBlockId(nx, ny, nz);
+            if (id <= 0 || id >= blockModelIndex.Count)
+            {
+                return false;
+            }
+
+            var variants = blockModelIndex[id];
+            if (variants == null || variants.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var variant in variants)
+            {
+                if (variant == null) continue;
+                var model = blockModelResolver.ResolveBlockModel(variant.Model);
+                if (model?.Elements == null) return false;
+
+                foreach (var element in model.Elements)
+                {
+                    if (!element.IsFullCube) return false;
+                    if (element.Faces == null) return false;
+
+                    foreach (var face in element.Faces.Values)
+                    {
+                        if (face == null) continue;
+                        var texturePath = model.ResolveTexture(face.Texture ?? string.Empty);
+                        if (texturePath.IsEmpty) return false;
+                        var mode = ResolveAlphaMode(texturePath, alphaByTexture);
+                        if (mode != TextureAlphaMode.Opaque)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return true;
         }
 
 
