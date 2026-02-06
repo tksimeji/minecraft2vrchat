@@ -98,6 +98,7 @@ namespace M2V.Editor.GUI
                 Max = max,
                 UseGreedy = false,
                 ApplyCoordinateTransform = true,
+                BlockScale = _state.BlockScale,
                 LogSliceStats = false,
                 LogPaletteBounds = false,
                 UseTextureAtlas = true,
@@ -132,7 +133,13 @@ namespace M2V.Editor.GUI
                 }
 
                 SetLoadingStatus(Localization.Get(_state.Language, Localization.Keys.LoadingApplyingMaterial));
-                var go = MeshInstaller.InstallMesh("WorldMesh", result.Mesh, result.AtlasTexture, result.AtlasAnimation);
+                var go = MeshInstaller.InstallMesh(
+                    "WorldMesh",
+                    result.Mesh,
+                    result.AtlasTexture,
+                    result.AtlasAnimation,
+                    context.BlockScale
+                );
 
                 Selection.activeObject = go;
                 var modeLabel = context.UseGreedy ? "Greedy" : "Naive";

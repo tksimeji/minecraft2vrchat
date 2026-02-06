@@ -75,6 +75,10 @@
                                 </Button>
                             </VisualElement>
                         </VisualElement>
+                        <VisualElement class="m2v-coord-row">
+                            <Label name="blockScaleLabel" text="Block Scale" class="m2v-coord-label" />
+                            <FloatField name="blockScaleField" class="m2v-coord-field" label="" />
+                        </VisualElement>
 
                         <VisualElement class="m2v-divider" />
                         <VisualElement class="m2v-wizard-spacer" />
@@ -93,6 +97,7 @@
                             <Label name="summaryWorld" text="World: -" class="m2v-summary-item" />
                             <Label name="summaryRange" text="Range: -" class="m2v-summary-item" />
                             <Label name="summaryDimension" text="Dimension: -" class="m2v-summary-item" />
+                            <Label name="summaryScale" text="Scale: -" class="m2v-summary-item" />
                             <Label name="summaryPacks" text="Packs: -" class="m2v-summary-item" />
                         </VisualElement>
 

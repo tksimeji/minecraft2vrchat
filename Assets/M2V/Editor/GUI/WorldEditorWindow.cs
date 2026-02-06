@@ -34,6 +34,7 @@ namespace M2V.Editor.GUI
         private Label _rangeMinLabel = null!;
         private Label _rangeMaxLabel = null!;
         private Label _rangeDimensionLabel = null!;
+        private Label _blockScaleLabel = null!;
         private Label _dimensionOverworldLabel = null!;
         private Label _dimensionNetherLabel = null!;
         private Label _dimensionEndLabel = null!;
@@ -43,6 +44,7 @@ namespace M2V.Editor.GUI
         private Label _summaryWorld = null!;
         private Label _summaryRange = null!;
         private Label _summaryDimension = null!;
+        private Label _summaryScale = null!;
         private Label _summaryPacks = null!;
         private Label _loadingTitle = null!;
         private Button _dimensionOverworldButton = null!;
@@ -76,6 +78,7 @@ namespace M2V.Editor.GUI
         private readonly EditorState _state = new EditorState();
         private static bool s_logChunkDatOnce;
         private bool _isSyncingRange;
+        private FloatField _blockScaleField = null!;
 
         [MenuItem("Tools/Minecraft2VRChat")]
         public static void Open()

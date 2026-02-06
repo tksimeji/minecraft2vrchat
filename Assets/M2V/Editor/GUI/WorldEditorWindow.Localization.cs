@@ -75,6 +75,7 @@ namespace M2V.Editor.GUI
             SetLabel(_rangeMinLabel, Localization.Keys.RangeMin, lang);
             SetLabel(_rangeMaxLabel, Localization.Keys.RangeMax, lang);
             SetLabel(_rangeDimensionLabel, Localization.Keys.RangeDimension, lang);
+            SetLabel(_blockScaleLabel, Localization.Keys.BlockScale, lang);
             SetLabel(_dimensionOverworldLabel, Localization.Keys.DimensionOverworld, lang);
             SetLabel(_dimensionNetherLabel, Localization.Keys.DimensionNether, lang);
             SetLabel(_dimensionEndLabel, Localization.Keys.DimensionEnd, lang);

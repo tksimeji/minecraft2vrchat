@@ -355,6 +355,7 @@ namespace M2V.Editor.Bakery
         public Vector3Int Max { get; init; }
         public bool UseGreedy { get; init; }
         public bool ApplyCoordinateTransform { get; init; }
+        public float BlockScale { get; init; }
         public bool LogSliceStats { get; init; }
         public bool LogPaletteBounds { get; init; }
         public bool UseTextureAtlas { get; init; }

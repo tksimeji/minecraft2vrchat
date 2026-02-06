@@ -15,6 +15,7 @@ namespace M2V.Editor.GUI
         public int MaxX = 10;
         public int MaxY = 90;
         public int MaxZ = 10;
+        public float BlockScale = 1f;
 
         public readonly List<WorldEntry> WorldEntries = new List<WorldEntry>();
         public DirectoryInfo? CurrentWorldPath;

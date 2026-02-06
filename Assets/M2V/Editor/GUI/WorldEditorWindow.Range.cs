@@ -17,6 +17,10 @@ namespace M2V.Editor.GUI
             _maxXField.RegisterValueChangedCallback(evt => UpdateRangeFromUi());
             _maxYField.RegisterValueChangedCallback(evt => UpdateRangeFromUi());
             _maxZField.RegisterValueChangedCallback(evt => UpdateRangeFromUi());
+            if (_blockScaleField != null)
+            {
+                _blockScaleField.RegisterValueChangedCallback(evt => UpdateScaleFromUi());
+            }
         }
         private LevelStem GetSelectedDimensionId()
         {
@@ -190,6 +194,23 @@ namespace M2V.Editor.GUI
             UpdateRangeButtons();
             UpdateSummary();
         }
+        private void UpdateScaleFromUi()
+        {
+            if (_isSyncingRange || _blockScaleField == null)
+            {
+                return;
+            }
+
+            var value = _blockScaleField.value;
+            if (value <= 0f)
+            {
+                value = 0.01f;
+                _blockScaleField.SetValueWithoutNotify(value);
+            }
+
+            _state.BlockScale = value;
+            UpdateSummary();
+        }
         private void SyncStateToUi()
         {
             if (_minXField == null || _minYField == null || _minZField == null ||
@@ -205,6 +226,10 @@ namespace M2V.Editor.GUI
             _maxXField.value = _state.MaxX;
             _maxYField.value = _state.MaxY;
             _maxZField.value = _state.MaxZ;
+            if (_blockScaleField != null)
+            {
+                _blockScaleField.value = _state.BlockScale;
+            }
             _isSyncingRange = false;
             UpdateRangeButtons();
             UpdateSummary();

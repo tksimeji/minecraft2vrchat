@@ -47,6 +47,8 @@ namespace M2V.Editor.GUI
             _rangeMinLabel = rootVisualElement.Q<Label>("rangeMinLabel");
             _rangeMaxLabel = rootVisualElement.Q<Label>("rangeMaxLabel");
             _rangeDimensionLabel = rootVisualElement.Q<Label>("rangeDimensionLabel");
+            _blockScaleLabel = rootVisualElement.Q<Label>("blockScaleLabel");
+            _blockScaleField = rootVisualElement.Q<FloatField>("blockScaleField");
             _dimensionOverworldLabel = rootVisualElement.Q<Label>("dimensionOverworldLabel");
             _dimensionNetherLabel = rootVisualElement.Q<Label>("dimensionNetherLabel");
             _dimensionEndLabel = rootVisualElement.Q<Label>("dimensionEndLabel");
@@ -56,6 +58,7 @@ namespace M2V.Editor.GUI
             _summaryWorld = rootVisualElement.Q<Label>("summaryWorld");
             _summaryRange = rootVisualElement.Q<Label>("summaryRange");
             _summaryDimension = rootVisualElement.Q<Label>("summaryDimension");
+            _summaryScale = rootVisualElement.Q<Label>("summaryScale");
             _summaryPacks = rootVisualElement.Q<Label>("summaryPacks");
             _loadingTitle = rootVisualElement.Q<Label>("loadingTitle");
             _dimensionOverworldButton = rootVisualElement.Q<Button>("dimensionOverworldButton");
@@ -164,6 +167,7 @@ namespace M2V.Editor.GUI
             return _statusLabel != null && _worldList != null &&
                    _minXField != null && _minYField != null && _minZField != null &&
                    _maxXField != null && _maxYField != null && _maxZField != null &&
+                   _blockScaleField != null &&
                    _dimensionOverworldButton != null && _dimensionNetherButton != null && _dimensionEndButton != null &&
                    _openButton != null && clearButton != null && _meshButton != null &&
                    customImportButton != null && reloadButton != null;

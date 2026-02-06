@@ -36,6 +36,7 @@ namespace M2V.Editor.GUI
                 Keys.RangeMin => "Min",
                 Keys.RangeMax => "Max",
                 Keys.RangeDimension => "Dimension",
+                Keys.BlockScale => "Block Scale",
                 Keys.RangeHint => "Tip: You can edit values directly or adjust around spawn.",
                 Keys.DimensionOverworld => "Overworld",
                 Keys.DimensionNether => "Nether",
@@ -49,6 +50,7 @@ namespace M2V.Editor.GUI
                 Keys.SummaryWorld => "World",
                 Keys.SummaryRange => "Range",
                 Keys.SummaryDimension => "Dimension",
+                Keys.SummaryScale => "Scale",
                 Keys.SummaryPacks => "Packs",
                 Keys.SummaryNone => "None",
                 Keys.SummaryResource => "Resource",
@@ -92,6 +94,7 @@ namespace M2V.Editor.GUI
                 Keys.RangeMin => "最小",
                 Keys.RangeMax => "最大",
                 Keys.RangeDimension => "ディメンション",
+                Keys.BlockScale => "ブロックスケール",
                 Keys.RangeHint => "ヒント: 数値を直接入力するか、スポーン周辺に調整できます。",
                 Keys.DimensionOverworld => "オーバーワールド",
                 Keys.DimensionNether => "ネザー",
@@ -105,6 +108,7 @@ namespace M2V.Editor.GUI
                 Keys.SummaryWorld => "ワールド",
                 Keys.SummaryRange => "範囲",
                 Keys.SummaryDimension => "ディメンション",
+                Keys.SummaryScale => "スケール",
                 Keys.SummaryPacks => "パック",
                 Keys.SummaryNone => "なし",
                 Keys.SummaryResource => "リソース",
@@ -146,6 +150,7 @@ namespace M2V.Editor.GUI
             internal const string RangeMin = "range.min";
             internal const string RangeMax = "range.max";
             internal const string RangeDimension = "range.dimension";
+            internal const string BlockScale = "range.block_scale";
             internal const string RangeHint = "range.hint";
             internal const string DimensionOverworld = "dimension.overworld";
             internal const string DimensionNether = "dimension.nether";
@@ -159,6 +164,7 @@ namespace M2V.Editor.GUI
             internal const string SummaryWorld = "summary.world";
             internal const string SummaryRange = "summary.range";
             internal const string SummaryDimension = "summary.dimension";
+            internal const string SummaryScale = "summary.scale";
             internal const string SummaryPacks = "summary.packs";
             internal const string SummaryNone = "summary.none";
             internal const string SummaryResource = "summary.resource";

@@ -18,9 +18,16 @@ namespace M2V.Editor.Bakery.Meshing
         private static readonly int ZWriteId = Shader.PropertyToID("_ZWrite");
         private static readonly int CutoffId = Shader.PropertyToID("_Cutoff");
 
-        public static GameObject InstallMesh(string rootName, Mesh mesh, Texture2D? atlasTexture, AtlasAnimation? animation)
+        public static GameObject InstallMesh(
+            string rootName,
+            Mesh mesh,
+            Texture2D? atlasTexture,
+            AtlasAnimation? animation,
+            float blockScale
+        )
         {
             var gameObject = GameObject.Find(rootName) ?? new GameObject(rootName);
+            ApplyBlockScale(gameObject.transform, blockScale);
             var filter = EnsureMeshFilter(gameObject, rootName);
             var renderer = EnsureMeshRenderer(gameObject, rootName);
 
@@ -56,6 +63,11 @@ namespace M2V.Editor.Bakery.Meshing
             }
 
             return gameObject;
+        }
+        private static void ApplyBlockScale(Transform target, float blockScale)
+        {
+            var scale = blockScale <= 0f ? 0.01f : blockScale;
+            target.localScale = new Vector3(scale, scale, scale);
         }
 
         private static MeshFilter? EnsureMeshFilter(GameObject gameObject, string rootName)

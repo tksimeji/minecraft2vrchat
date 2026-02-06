@@ -207,11 +207,6 @@ namespace M2V.Editor.GUI
         }
         private void UpdateSummary()
         {
-            if (_summaryWorld == null || _summaryRange == null || _summaryDimension == null || _summaryPacks == null)
-            {
-                return;
-            }
-
             var lang = _state.Language;
             var worldName = GetSelectedWorldLabel();
             _summaryWorld.text = $"{Localization.Get(lang, Localization.Keys.SummaryWorld)}: {worldName}";
@@ -221,6 +216,8 @@ namespace M2V.Editor.GUI
 
             var dimensionLabel = GetSelectedDimensionLabel(lang);
             _summaryDimension.text = $"{Localization.Get(lang, Localization.Keys.SummaryDimension)}: {dimensionLabel}";
+
+            _summaryScale.text = $"{Localization.Get(lang, Localization.Keys.SummaryScale)}: {_state.BlockScale:0.###}";
 
             var packsLabel = GetPacksSummary(lang);
             _summaryPacks.text = $"{Localization.Get(lang, Localization.Keys.SummaryPacks)}: {packsLabel}";
