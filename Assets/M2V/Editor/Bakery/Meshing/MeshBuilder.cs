@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using M2V.Editor.Bakery.Tinting;
 using M2V.Editor.Minecraft;
 using M2V.Editor.Minecraft.Model;
-using M2V.Editor.Minecraft.World;
 using UnityEngine;
 
 namespace M2V.Editor.Bakery.Meshing
@@ -13,6 +12,7 @@ namespace M2V.Editor.Bakery.Meshing
     public sealed class MeshBuilder
     {
         private static readonly ResourceLocation FallbackTexture = ResourceLocation.Of("block/dirt");
+        private const float ThinEpsilon = 0.0001f;
 
         public sealed record BuildResult(Mesh? Mesh, Texture2D AtlasTexture, AtlasAnimation? AtlasAnimation);
 
@@ -78,9 +78,12 @@ namespace M2V.Editor.Bakery.Meshing
             var uvs = buffer.UVs;
             var colors = buffer.Colors;
             var trianglesSolid = buffer.TrianglesSolid;
+            var trianglesDoubleSidedCutout = buffer.TrianglesDoubleSidedCutout;
             var trianglesTranslucent = buffer.TrianglesTranslucent;
+            var quadDedup = new HashSet<QuadKey>();
 
-            var dims = new[] { volume.SizeX, volume.SizeY, volume.SizeZ };
+            var sizeX = volume.SizeX;
+            var sizeY = volume.SizeY;
 
             for (var z = 0; z < volume.SizeZ; z++)
             {
@@ -94,7 +97,7 @@ namespace M2V.Editor.Bakery.Meshing
                             continue;
                         }
 
-                        var blockIndex = x + dims[0] * (y + dims[1] * z);
+                        var blockIndex = x + sizeX * (y + sizeY * z);
                         var state = volume.BlockStates[id];
                         if (Fluid.TryEmit(
                                 state,
@@ -109,7 +112,8 @@ namespace M2V.Editor.Bakery.Meshing
                                 trianglesSolid,
                                 trianglesTranslucent,
                                 uvByTexture,
-                                alphaByTexture
+                                alphaByTexture,
+                                applyCoordinateTransform
                             ))
                         {
                             continue;
@@ -130,9 +134,12 @@ namespace M2V.Editor.Bakery.Meshing
                                 tintByBlock,
                                 vertices, normals, uvs, colors,
                                 trianglesSolid,
+                                trianglesDoubleSidedCutout,
                                 trianglesTranslucent,
                                 uvByTexture,
-                                alphaByTexture
+                                alphaByTexture,
+                                quadDedup,
+                                applyCoordinateTransform
                             );
                         }
                     }
@@ -141,10 +148,13 @@ namespace M2V.Editor.Bakery.Meshing
 
             if (vertices.Count == 0) return null;
 
-            M2VMathHelper.ApplyCoordinateTransform(
+            ApplyCoordinateTransform(
                 vertices, normals, trianglesSolid, min, applyCoordinateTransform
             );
-            M2VMathHelper.ApplyCoordinateTransform(
+            ApplyCoordinateTransform(
+                vertices, normals, trianglesDoubleSidedCutout, min, applyCoordinateTransform
+            );
+            ApplyCoordinateTransform(
                 vertices, normals, trianglesTranslucent, min, applyCoordinateTransform
             );
             return CreateMesh(buffer);
@@ -160,9 +170,12 @@ namespace M2V.Editor.Bakery.Meshing
             IReadOnlyList<Color32Byte> tintByBlock,
             List<Float3> vertices, List<Float3> normals, List<Float2> uvs, List<Color32Byte> colors,
             List<int> trianglesSolid,
+            List<int> trianglesDoubleSidedCutout,
             List<int> trianglesTranslucent,
             Dictionary<ResourceLocation, RectF> uvByTexture,
-            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture
+            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
+            HashSet<QuadKey> quadDedup,
+            bool applyCoordinateTransform
         )
         {
             var model = blockModelResolver.ResolveBlockModel(variant.Model);
@@ -177,22 +190,24 @@ namespace M2V.Editor.Bakery.Meshing
                 var corners = element.GetCornerPositions();
                 if (element.Rotation != null)
                 {
-                    var rot = Quaternion.AngleAxis(element.Rotation.Angle, element.Rotation.ToAxisVector());
+                    var axisVector = element.Rotation.ToAxisVector();
+                    var rotationOrigin = element.Rotation.ToToOriginVector();
+                    var rot = Quaternion.AngleAxis(element.Rotation.Angle, axisVector);
                     for (var i = 0; i < corners.Length; i++)
                     {
-                        corners[i] = M2VMathHelper.RotateAround(corners[i], element.Rotation.ToToOriginVector(), rot);
+                        corners[i] = M2VMathHelper.RotateAround(corners[i], rotationOrigin, rot);
                     }
 
                     if (element.Rotation.Rescale ?? false)
                     {
                         var radians = Mathf.Abs(element.Rotation.Angle) * Mathf.Deg2Rad;
-                        var scaleFactor = Mathf.Cos(radians) > 0.0001f ? 1f / Mathf.Cos(radians) : 1f;
+                        var scaleFactor = Mathf.Cos(radians) > ThinEpsilon ? 1f / Mathf.Cos(radians) : 1f;
                         Vector3 scale;
-                        if (element.Rotation.ToAxisVector() == Vector3.right)
+                        if (axisVector == Vector3.right)
                         {
                             scale = new Vector3(1f, scaleFactor, scaleFactor);
                         }
-                        else if (element.Rotation.ToAxisVector() == Vector3.up)
+                        else if (axisVector == Vector3.up)
                         {
                             scale = new Vector3(scaleFactor, 1f, scaleFactor);
                         }
@@ -203,9 +218,8 @@ namespace M2V.Editor.Bakery.Meshing
 
                         for (var i = 0; i < corners.Length; i++)
                         {
-                            var origin = element.Rotation.ToToOriginVector();
-                            var offset = corners[i] - origin;
-                            corners[i] = origin + Vector3.Scale(offset, scale);
+                            var offset = corners[i] - rotationOrigin;
+                            corners[i] = rotationOrigin + Vector3.Scale(offset, scale);
                         }
                     }
                 }
@@ -242,14 +256,27 @@ namespace M2V.Editor.Bakery.Meshing
                     {
                         texturePath = FallbackTexture;
                     }
+
                     var uvRect = M2VMathHelper.ResolveUvRect(
                         texturePath, face, variant, uvByTexture, element, direction
                     );
                     var alphaMode = ResolveAlphaMode(texturePath, alphaByTexture);
                     var tint = ResolveTint(face, blockIndex, tintByBlock);
+                    var isThinPlane = IsThinPlaneFace(element, direction);
+                    if (isThinPlane && ShouldSkipOppositeThinFace(element, direction))
+                    {
+                        continue;
+                    }
+
                     var targetTriangles = alphaMode == TextureAlphaMode.Translucent
                         ? trianglesTranslucent
-                        : trianglesSolid;
+                        : (isThinPlane ? trianglesDoubleSidedCutout : trianglesSolid);
+                    if (!TryAddQuad(quadDedup, quad[0] + blockOffset, quad[1] + blockOffset,
+                            quad[2] + blockOffset, quad[3] + blockOffset, uvRect))
+                    {
+                        continue;
+                    }
+
                     AddQuad(
                         vertices,
                         targetTriangles,
@@ -262,10 +289,58 @@ namespace M2V.Editor.Bakery.Meshing
                         normal,
                         uvRect,
                         tint,
-                        colors
+                        colors,
+                        NeedsWindingFlip(direction),
+                        applyCoordinateTransform
                     );
                 }
             }
+        }
+
+        private static bool IsThinPlaneFace(BlockElement element, Direction direction)
+        {
+            var thinX = Mathf.Abs(element.From.x - element.To.x) < ThinEpsilon;
+            var thinY = Mathf.Abs(element.From.y - element.To.y) < ThinEpsilon;
+            var thinZ = Mathf.Abs(element.From.z - element.To.z) < ThinEpsilon;
+
+            return direction switch
+            {
+                Direction.West or Direction.East => thinX,
+                Direction.Down or Direction.Up => thinY,
+                Direction.North or Direction.South => thinZ,
+                _ => false
+            };
+        }
+
+        private static bool ShouldSkipOppositeThinFace(BlockElement element, Direction direction)
+        {
+            if (element.Faces == null) return false;
+
+            return direction switch
+            {
+                Direction.East => element.Faces.ContainsKey(Direction.West),
+                Direction.West => false,
+                Direction.Up => element.Faces.ContainsKey(Direction.Down),
+                Direction.Down => false,
+                Direction.South => element.Faces.ContainsKey(Direction.North),
+                _ => false
+            };
+        }
+
+        private static bool NeedsWindingFlip(Direction direction)
+        {
+            return direction is Direction.West or Direction.East or Direction.Down;
+        }
+
+        private static void ApplyCoordinateTransform(
+            List<Float3> vertices,
+            List<Float3> normals,
+            List<int> triangles,
+            Vector3Int min,
+            bool applyCoordinateTransform
+        )
+        {
+            M2VMathHelper.ApplyCoordinateTransform(vertices, normals, triangles, min, applyCoordinateTransform);
         }
 
         private static TextureAlphaMode ResolveAlphaMode(
@@ -275,10 +350,31 @@ namespace M2V.Editor.Bakery.Meshing
         {
             if (!texturePath.IsEmpty && alphaByTexture.TryGetValue(texturePath, out var mode))
             {
+                if (mode == TextureAlphaMode.Translucent && !IsForcedTranslucent(texturePath))
+                {
+                    return TextureAlphaMode.Cutout;
+                }
+
                 return mode;
             }
 
             return TextureAlphaMode.Opaque;
+        }
+
+        private static bool IsForcedTranslucent(ResourceLocation texturePath)
+        {
+            if (texturePath.IsEmpty)
+            {
+                return false;
+            }
+
+            var name = string.Equals(texturePath.Namespace, ResourceLocation.MinecraftNamespace,
+                StringComparison.Ordinal)
+                ? texturePath.Path
+                : texturePath.ToString();
+
+            return name.Contains("water", StringComparison.Ordinal)
+                   || name.Contains("lava", StringComparison.Ordinal);
         }
 
         private static bool IsNeighborFullCube(
@@ -317,7 +413,9 @@ namespace M2V.Editor.Bakery.Meshing
             Vector3 normal,
             RectF uvRect,
             Color32Byte tint,
-            List<Color32Byte> colors
+            List<Color32Byte> colors,
+            bool flipWinding,
+            bool applyCoordinateTransform
         )
         {
             var index = vertices.Count;
@@ -341,12 +439,136 @@ namespace M2V.Editor.Bakery.Meshing
             uvs.Add(new Float2(uvRect.X + uvRect.Width, uvRect.Y + uvRect.Height));
             uvs.Add(new Float2(uvRect.X, uvRect.Y + uvRect.Height));
 
-            triangles.Add(index + 0);
-            triangles.Add(index + 1);
-            triangles.Add(index + 2);
-            triangles.Add(index + 3);
-            triangles.Add(index + 0);
-            triangles.Add(index + 2);
+            if (applyCoordinateTransform)
+            {
+                flipWinding = !flipWinding;
+            }
+
+            if (!flipWinding)
+            {
+                triangles.Add(index + 0);
+                triangles.Add(index + 1);
+                triangles.Add(index + 2);
+                triangles.Add(index + 3);
+                triangles.Add(index + 0);
+                triangles.Add(index + 2);
+            }
+            else
+            {
+                triangles.Add(index + 0);
+                triangles.Add(index + 2);
+                triangles.Add(index + 1);
+                triangles.Add(index + 3);
+                triangles.Add(index + 2);
+                triangles.Add(index + 0);
+            }
+        }
+
+        private static bool TryAddQuad(
+            HashSet<QuadKey> dedup,
+            Vector3 v0,
+            Vector3 v1,
+            Vector3 v2,
+            Vector3 v3,
+            RectF uvRect
+        )
+        {
+            var key = QuadKey.From(v0, v1, v2, v3, uvRect);
+            return dedup.Add(key);
+        }
+
+        private readonly struct QuadKey : IEquatable<QuadKey>
+        {
+            private readonly int _h0;
+            private readonly int _h1;
+            private readonly int _h2;
+            private readonly int _h3;
+
+            private QuadKey(int h0, int h1, int h2, int h3)
+            {
+                _h0 = h0;
+                _h1 = h1;
+                _h2 = h2;
+                _h3 = h3;
+            }
+
+            public static QuadKey From(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, RectF uvRect)
+            {
+                var uv0 = new Vector2(uvRect.X, uvRect.Y);
+                var uv1 = new Vector2(uvRect.X + uvRect.Width, uvRect.Y);
+                var uv2 = new Vector2(uvRect.X + uvRect.Width, uvRect.Y + uvRect.Height);
+                var uv3 = new Vector2(uvRect.X, uvRect.Y + uvRect.Height);
+
+                var a = new QuadVertex(v0, uv0);
+                var b = new QuadVertex(v1, uv1);
+                var c = new QuadVertex(v2, uv2);
+                var d = new QuadVertex(v3, uv3);
+
+                var list = new[] { a, b, c, d };
+                Array.Sort(list, QuadVertexComparer.Instance);
+
+                var h0 = list[0].GetHash();
+                var h1 = list[1].GetHash();
+                var h2 = list[2].GetHash();
+                var h3 = list[3].GetHash();
+
+                return new QuadKey(h0, h1, h2, h3);
+            }
+
+            public bool Equals(QuadKey other)
+            {
+                return _h0 == other._h0 && _h1 == other._h1 && _h2 == other._h2 && _h3 == other._h3;
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is QuadKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(_h0, _h1, _h2, _h3);
+            }
+        }
+
+        private readonly struct QuadVertex
+        {
+            private readonly int _x;
+            private readonly int _y;
+            private readonly int _z;
+            private readonly int _u;
+            private readonly int _v;
+
+            public QuadVertex(Vector3 position, Vector2 uv)
+            {
+                _x = Quantize(position.x);
+                _y = Quantize(position.y);
+                _z = Quantize(position.z);
+                _u = Quantize(uv.x);
+                _v = Quantize(uv.y);
+            }
+
+            public int GetHash()
+            {
+                return HashCode.Combine(_x, _y, _z, _u, _v);
+            }
+        }
+
+        private sealed class QuadVertexComparer : IComparer<QuadVertex>
+        {
+            public static readonly QuadVertexComparer Instance = new();
+
+            public int Compare(QuadVertex left, QuadVertex right)
+            {
+                var lh = left.GetHash();
+                var rh = right.GetHash();
+                return lh.CompareTo(rh);
+            }
+        }
+
+        private static int Quantize(float value)
+        {
+            return (int)Mathf.Round(value * 10000f);
         }
 
         private static Color32Byte ResolveTint(
@@ -411,7 +633,23 @@ namespace M2V.Editor.Bakery.Meshing
                 mesh.colors32 = colors;
             }
 
-            if (buffer.TrianglesTranslucent.Count > 0)
+            var hasDoubleSidedCutout = buffer.TrianglesDoubleSidedCutout.Count > 0;
+            var hasTranslucent = buffer.TrianglesTranslucent.Count > 0;
+
+            if (hasDoubleSidedCutout && hasTranslucent)
+            {
+                mesh.subMeshCount = 3;
+                mesh.SetTriangles(buffer.TrianglesSolid, 0);
+                mesh.SetTriangles(buffer.TrianglesDoubleSidedCutout, 1);
+                mesh.SetTriangles(buffer.TrianglesTranslucent, 2);
+            }
+            else if (hasDoubleSidedCutout)
+            {
+                mesh.subMeshCount = 2;
+                mesh.SetTriangles(buffer.TrianglesSolid, 0);
+                mesh.SetTriangles(buffer.TrianglesDoubleSidedCutout, 1);
+            }
+            else if (hasTranslucent)
             {
                 mesh.subMeshCount = 2;
                 mesh.SetTriangles(buffer.TrianglesSolid, 0);
@@ -434,6 +672,7 @@ namespace M2V.Editor.Bakery.Meshing
             public List<Float2> UVs { get; } = new();
             public List<Color32Byte> Colors { get; } = new();
             public List<int> TrianglesSolid { get; } = new();
+            public List<int> TrianglesDoubleSidedCutout { get; } = new();
             public List<int> TrianglesTranslucent { get; } = new();
         }
     }

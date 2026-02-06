@@ -10,6 +10,9 @@ namespace M2V.Editor.Bakery.Meshing
 {
     public static class Fluid
     {
+        private const float HeightEpsilon = 0.0001f;
+        private const float FullHeightThreshold = 0.999f;
+        private static readonly Color32Byte DefaultTint = new(255, 255, 255, 255);
         private static readonly ResourceLocation WaterStill = ResourceLocation.Of("block/water_still");
         private static readonly ResourceLocation WaterFlow = ResourceLocation.Of("block/water_flow");
         private static readonly ResourceLocation LavaStill = ResourceLocation.Of("block/lava_still");
@@ -71,7 +74,8 @@ namespace M2V.Editor.Bakery.Meshing
             List<int> trianglesSolid,
             List<int> trianglesTranslucent,
             Dictionary<ResourceLocation, RectF> uvByTexture,
-            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture
+            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
+            bool applyCoordinateTransform
         )
         {
             if (!TryGetFluidInfo(state, out var type, out var level, out var falling))
@@ -96,7 +100,8 @@ namespace M2V.Editor.Bakery.Meshing
                 trianglesSolid,
                 trianglesTranslucent,
                 uvByTexture,
-                alphaByTexture
+                alphaByTexture,
+                applyCoordinateTransform
             );
             return true;
         }
@@ -271,7 +276,7 @@ namespace M2V.Editor.Bakery.Meshing
             }
 
             var h = Mathf.Clamp01(height);
-            if (h >= 0.999f)
+            if (h >= FullHeightThreshold)
             {
                 return rect;
             }
@@ -330,7 +335,7 @@ namespace M2V.Editor.Bakery.Meshing
             var dx = hW - hE;
             var dz = hN - hS;
 
-            if (Mathf.Abs(dx) < 0.0001f && Mathf.Abs(dz) < 0.0001f)
+            if (Mathf.Abs(dx) < HeightEpsilon && Mathf.Abs(dz) < HeightEpsilon)
             {
                 return 0f;
             }
@@ -355,7 +360,8 @@ namespace M2V.Editor.Bakery.Meshing
             List<int> trianglesSolid,
             List<int> trianglesTranslucent,
             Dictionary<ResourceLocation, RectF> uvByTexture,
-            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture
+            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
+            bool applyCoordinateTransform
         )
         {
             var baseHeight = GetFluidHeight(level, falling);
@@ -368,12 +374,8 @@ namespace M2V.Editor.Bakery.Meshing
             h11 = Mathf.Max(h11, baseHeight);
             h01 = Mathf.Max(h01, baseHeight);
 
-            var tint = blockIndex >= 0 && blockIndex < tintByBlock.Count
-                ? tintByBlock[blockIndex]
-                : new Color32Byte(255, 255, 255, 255);
-            var topTexture = (level > 0 || falling)
-                ? (type == FluidType.Water ? WaterFlow : LavaFlow)
-                : (type == FluidType.Water ? WaterStill : LavaStill);
+            var tint = ResolveTint(blockIndex, tintByBlock);
+            var topTexture = type == FluidType.Water ? WaterStill : LavaStill;
 
             var aboveId = blockY + 1 < volume.SizeY ? volume.GetBlockId(blockX, blockY + 1, blockZ) : 0;
             var hasCoverAbove = false;
@@ -412,7 +414,8 @@ namespace M2V.Editor.Bakery.Meshing
                         Vector3.up,
                         rotated,
                         tint,
-                        colors
+                        colors,
+                        applyCoordinateTransform
                     );
                 }
                 else
@@ -429,19 +432,20 @@ namespace M2V.Editor.Bakery.Meshing
                         Vector3.up,
                         topUv,
                         tint,
-                        colors
+                        colors,
+                        applyCoordinateTransform
                     );
                 }
             }
 
             EmitFluidSide(Direction.North, blockX, blockY, blockZ, h00, h10, type, tint, volume, vertices, normals,
-                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture);
+                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture, applyCoordinateTransform);
             EmitFluidSide(Direction.South, blockX, blockY, blockZ, h01, h11, type, tint, volume, vertices, normals,
-                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture);
+                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture, applyCoordinateTransform);
             EmitFluidSide(Direction.West, blockX, blockY, blockZ, h00, h01, type, tint, volume, vertices, normals,
-                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture);
+                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture, applyCoordinateTransform);
             EmitFluidSide(Direction.East, blockX, blockY, blockZ, h10, h11, type, tint, volume, vertices, normals,
-                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture);
+                uvs, colors, trianglesSolid, trianglesTranslucent, uvByTexture, alphaByTexture, applyCoordinateTransform);
 
             var belowId = blockY - 1 >= 0 ? volume.GetBlockId(blockX, blockY - 1, blockZ) : 0;
             var hasCoverBelow = false;
@@ -477,7 +481,8 @@ namespace M2V.Editor.Bakery.Meshing
                     Vector3.down,
                     bottomUv,
                     tint,
-                    colors
+                    colors,
+                    applyCoordinateTransform
                 );
             }
         }
@@ -499,7 +504,8 @@ namespace M2V.Editor.Bakery.Meshing
             List<int> trianglesSolid,
             List<int> trianglesTranslucent,
             Dictionary<ResourceLocation, RectF> uvByTexture,
-            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture
+            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
+            bool applyCoordinateTransform
         )
         {
             if (heightA <= 0f && heightB <= 0f)
@@ -524,12 +530,19 @@ namespace M2V.Editor.Bakery.Meshing
             if (neighborId > 0 && neighborId < volume.BlockStateCount)
             {
                 var neighborState = volume.BlockStates[neighborId];
-                if (TryGetFluidInfo(neighborState, out _, out _, out _))
+                if (TryGetFluidInfo(neighborState, out var neighborType, out var neighborLevel, out var neighborFalling))
                 {
-                    return;
+                    if (neighborType == type)
+                    {
+                        var neighborHeight = GetFluidHeight(neighborLevel, neighborFalling);
+                        var maxHeight = Mathf.Max(heightA, heightB);
+                        if (neighborHeight >= FullHeightThreshold && maxHeight >= FullHeightThreshold)
+                        {
+                            return;
+                        }
+                    }
                 }
-
-                if (!neighborState.IsAir)
+                else if (!neighborState.IsAir)
                 {
                     return;
                 }
@@ -589,7 +602,8 @@ namespace M2V.Editor.Bakery.Meshing
                 M2VMathHelper.DirectionToNormal(direction),
                 uvRect,
                 tint,
-                colors
+                colors,
+                applyCoordinateTransform
             );
         }
 
@@ -602,7 +616,8 @@ namespace M2V.Editor.Bakery.Meshing
             Vector3 normal,
             RectF uvRect,
             Color32Byte tint,
-            List<Color32Byte> colors
+            List<Color32Byte> colors,
+            bool applyCoordinateTransform
         )
         {
             var index = vertices.Count;
@@ -626,12 +641,30 @@ namespace M2V.Editor.Bakery.Meshing
             uvs.Add(new Float2(uvRect.X + uvRect.Width, uvRect.Y + uvRect.Height));
             uvs.Add(new Float2(uvRect.X, uvRect.Y + uvRect.Height));
 
-            triangles.Add(index + 0);
-            triangles.Add(index + 1);
-            triangles.Add(index + 2);
-            triangles.Add(index + 3);
-            triangles.Add(index + 0);
-            triangles.Add(index + 2);
+            var flipWinding = NeedsWindingFlip(normal);
+            if (applyCoordinateTransform)
+            {
+                flipWinding = !flipWinding;
+            }
+
+            if (!flipWinding)
+            {
+                triangles.Add(index + 0);
+                triangles.Add(index + 1);
+                triangles.Add(index + 2);
+                triangles.Add(index + 3);
+                triangles.Add(index + 0);
+                triangles.Add(index + 2);
+            }
+            else
+            {
+                triangles.Add(index + 0);
+                triangles.Add(index + 2);
+                triangles.Add(index + 1);
+                triangles.Add(index + 3);
+                triangles.Add(index + 2);
+                triangles.Add(index + 0);
+            }
         }
 
         private static void AddQuadWithUvs(
@@ -643,7 +676,8 @@ namespace M2V.Editor.Bakery.Meshing
             Vector3 normal,
             Float2[] uv,
             Color32Byte tint,
-            List<Color32Byte> colors
+            List<Color32Byte> colors,
+            bool applyCoordinateTransform
         )
         {
             var index = vertices.Count;
@@ -677,12 +711,42 @@ namespace M2V.Editor.Bakery.Meshing
                 uvs.Add(new Float2(0f, 1f));
             }
 
-            triangles.Add(index + 0);
-            triangles.Add(index + 1);
-            triangles.Add(index + 2);
-            triangles.Add(index + 3);
-            triangles.Add(index + 0);
-            triangles.Add(index + 2);
+            var flipWinding = NeedsWindingFlip(normal);
+            if (applyCoordinateTransform)
+            {
+                flipWinding = !flipWinding;
+            }
+
+            if (!flipWinding)
+            {
+                triangles.Add(index + 0);
+                triangles.Add(index + 1);
+                triangles.Add(index + 2);
+                triangles.Add(index + 3);
+                triangles.Add(index + 0);
+                triangles.Add(index + 2);
+            }
+            else
+            {
+                triangles.Add(index + 0);
+                triangles.Add(index + 2);
+                triangles.Add(index + 1);
+                triangles.Add(index + 3);
+                triangles.Add(index + 2);
+                triangles.Add(index + 0);
+            }
+        }
+
+        private static bool NeedsWindingFlip(Vector3 normal)
+        {
+            return Mathf.Abs(normal.x) > 0.5f || normal.y < -0.5f;
+        }
+
+        private static Color32Byte ResolveTint(int blockIndex, IReadOnlyList<Color32Byte> tintByBlock)
+        {
+            return blockIndex >= 0 && blockIndex < tintByBlock.Count
+                ? tintByBlock[blockIndex]
+                : DefaultTint;
         }
 
         private static TextureAlphaMode ResolveAlphaMode(
@@ -692,10 +756,30 @@ namespace M2V.Editor.Bakery.Meshing
         {
             if (!texturePath.IsEmpty && alphaByTexture.TryGetValue(texturePath, out var mode))
             {
+                if (mode == TextureAlphaMode.Translucent && !IsForcedTranslucent(texturePath))
+                {
+                    return TextureAlphaMode.Cutout;
+                }
+
                 return mode;
             }
 
             return TextureAlphaMode.Opaque;
+        }
+
+        private static bool IsForcedTranslucent(ResourceLocation texturePath)
+        {
+            if (texturePath.IsEmpty)
+            {
+                return false;
+            }
+
+            var name = string.Equals(texturePath.Namespace, ResourceLocation.MinecraftNamespace, StringComparison.Ordinal)
+                ? texturePath.Path
+                : texturePath.ToString();
+
+            return name.Contains("water", StringComparison.Ordinal)
+                   || name.Contains("lava", StringComparison.Ordinal);
         }
     }
 }

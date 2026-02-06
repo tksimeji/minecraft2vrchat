@@ -8,7 +8,8 @@ namespace M2V.Editor.Bakery.Meshing
 {
     public static class MeshInstaller
     {
-        private const string DoubleSidedShaderPath = "Assets/M2V/Editor/UnlitDoubleSided.shader";
+        private const string CutoutShaderPath = "Assets/M2V/Editor/UnlitCutout.shader";
+        private const string DoubleSidedCutoutShaderPath = "Assets/M2V/Editor/UnlitDoubleSided.shader";
         private const string DoubleSidedTransparentShaderPath = "Assets/M2V/Editor/UnlitDoubleSidedTransparent.shader";
 
         private static readonly int CullId = Shader.PropertyToID("_Cull");
@@ -91,9 +92,28 @@ namespace M2V.Editor.Bakery.Meshing
             return fallback.AddComponent<MeshRenderer>();
         }
 
-        private static Shader GetDoubleSidedShader()
+        private static Shader GetCutoutShader()
         {
-            var shader = AssetDatabase.LoadAssetAtPath<Shader>(DoubleSidedShaderPath);
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(CutoutShaderPath);
+            if (shader != null && shader.isSupported)
+            {
+                return shader;
+            }
+
+            shader = Shader.Find("World/UnlitCutout");
+            if (shader != null && shader.isSupported)
+            {
+                return shader;
+            }
+
+            return FindSupportedShader("Unlit/Texture", "Universal Render Pipeline/Unlit", "HDRP/Unlit")
+                   ?? Shader.Find("Unlit/Texture")
+                   ?? Shader.Find("Sprites/Default")!;
+        }
+
+        private static Shader GetDoubleSidedCutoutShader()
+        {
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(DoubleSidedCutoutShaderPath);
             if (shader != null && shader.isSupported)
             {
                 return shader;
@@ -163,7 +183,23 @@ namespace M2V.Editor.Bakery.Meshing
         {
             return IsUsingScriptableRenderPipeline()
                 ? CreateUrpUnlitMaterial(texture, transparent: false)
-                : new Material(GetDoubleSidedShader()) { mainTexture = texture };
+                : new Material(GetCutoutShader()) { mainTexture = texture };
+        }
+
+        private static Material CreateDoubleSidedCutoutMaterial(Texture2D? texture)
+        {
+            if (IsUsingScriptableRenderPipeline())
+            {
+                var material = CreateUrpUnlitMaterial(texture, transparent: false);
+                if (material.HasProperty(CullId))
+                {
+                    material.SetInt(CullId, (int)CullMode.Off);
+                }
+
+                return material;
+            }
+
+            return new Material(GetDoubleSidedCutoutShader()) { mainTexture = texture };
         }
 
         private static Material CreateTransparentMaterial(Texture2D? texture)
@@ -178,13 +214,16 @@ namespace M2V.Editor.Bakery.Meshing
             var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("HDRP/Unlit");
             if (shader == null)
             {
-                return new Material(GetDoubleSidedShader()) { mainTexture = texture };
+                return new Material(transparent ? GetDoubleSidedTransparentShader() : GetCutoutShader())
+                {
+                    mainTexture = texture
+                };
             }
 
             var material = new Material(shader) { mainTexture = texture };
             if (material.HasProperty(CullId))
             {
-                material.SetInt(CullId, (int)CullMode.Off);
+                material.SetInt(CullId, transparent ? (int)CullMode.Off : (int)CullMode.Back);
             }
 
             if (transparent)
@@ -241,67 +280,52 @@ namespace M2V.Editor.Bakery.Meshing
 
             atlasTexture.filterMode = FilterMode.Point;
             atlasTexture.wrapMode = TextureWrapMode.Repeat;
-            if (IsUsingScriptableRenderPipeline())
-            {
-                if (mesh != null && mesh.subMeshCount > 1)
-                {
-                    renderer.sharedMaterials = new[]
-                    {
-                        CreateCutoutMaterial(atlasTexture),
-                        CreateTransparentMaterial(atlasTexture)
-                    };
-                }
-                else
-                {
-                    renderer.sharedMaterial = CreateCutoutMaterial(atlasTexture);
-                }
-
-                return;
-            }
-
-            if (mesh != null && mesh.subMeshCount > 1)
-            {
-                var materials = renderer.sharedMaterials;
-                if (materials.Length == 2
-                    && materials[0] != null
-                    && materials[1] != null
-                    && materials[0].shader != null
-                    && materials[1].shader != null
-                    && materials[0].shader.isSupported
-                    && materials[1].shader.isSupported
-                    && materials[0].mainTexture == atlasTexture
-                    && materials[1].mainTexture == atlasTexture) return;
-                
-                var cutoutMaterial = CreateCutoutMaterial(atlasTexture);
-                var transparentMaterial = CreateTransparentMaterial(atlasTexture);
-                renderer.sharedMaterials = new[] { cutoutMaterial, transparentMaterial };
-            }
-            else if (renderer.sharedMaterial == null
-                     || renderer.sharedMaterial.shader == null
-                     || !renderer.sharedMaterial.shader.isSupported
-                     || renderer.sharedMaterial.mainTexture != atlasTexture)
-            {
-                var cutoutMaterial = CreateCutoutMaterial(atlasTexture);
-                renderer.sharedMaterial = cutoutMaterial;
-            }
+            ApplyMaterials(renderer, atlasTexture, mesh);
         }
 
         private static void ApplyFallbackMaterial(MeshRenderer renderer, Mesh? mesh)
         {
             if (renderer == null) return;
             
-            if (mesh != null && mesh.subMeshCount > 1)
+            ApplyMaterials(renderer, null, mesh);
+        }
+
+        private static void ApplyMaterials(MeshRenderer renderer, Texture2D? atlasTexture, Mesh? mesh)
+        {
+            var subMeshCount = mesh?.subMeshCount ?? 1;
+            var materials = GetMaterialsForSubMeshes(atlasTexture, subMeshCount);
+            if (materials.Length == 1)
             {
-                renderer.sharedMaterials = new[]
-                {
-                    CreateCutoutMaterial(null),
-                    CreateTransparentMaterial(null)
-                };
+                renderer.sharedMaterial = materials[0];
             }
             else
             {
-                renderer.sharedMaterial = CreateCutoutMaterial(null);
+                renderer.sharedMaterials = materials;
             }
+        }
+
+        private static Material[] GetMaterialsForSubMeshes(Texture2D? atlasTexture, int subMeshCount)
+        {
+            if (subMeshCount <= 1)
+            {
+                return new[] { CreateCutoutMaterial(atlasTexture) };
+            }
+
+            if (subMeshCount == 2)
+            {
+                return new[]
+                {
+                    CreateCutoutMaterial(atlasTexture),
+                    CreateDoubleSidedCutoutMaterial(atlasTexture)
+                };
+            }
+
+            return new[]
+            {
+                CreateCutoutMaterial(atlasTexture),
+                CreateDoubleSidedCutoutMaterial(atlasTexture),
+                CreateTransparentMaterial(atlasTexture)
+            };
         }
     }
 }

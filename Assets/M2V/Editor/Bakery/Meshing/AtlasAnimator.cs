@@ -11,10 +11,10 @@ namespace M2V.Editor.Bakery.Meshing
         private AtlasAnimation? _animation;
         private double _startTime;
 
-        public void Initialize(Texture2D atlas, AtlasAnimation animation)
+        public void Initialize(Texture2D atlas, AtlasAnimation atlasAnimation)
         {
             _atlas = atlas;
-            _animation = animation;
+            _animation = atlasAnimation;
             _startTime = GetTimeSeconds();
         }
 
@@ -32,12 +32,8 @@ namespace M2V.Editor.Bakery.Meshing
         private static double GetTimeSeconds()
         {
 #if UNITY_EDITOR
-            if (!EditorApplication.isPlaying)
-            {
-                return EditorApplication.timeSinceStartup;
-            }
+            return !EditorApplication.isPlaying ? EditorApplication.timeSinceStartup : Time.unscaledTimeAsDouble;
 #endif
-            return Time.unscaledTimeAsDouble;
         }
     }
 }
