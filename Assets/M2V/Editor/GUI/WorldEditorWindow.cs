@@ -84,10 +84,10 @@ namespace M2V.Editor.GUI
         private bool _isSyncingRange;
         private FloatField _blockScaleField = null!;
 
-        [MenuItem("Tools/Minecraft2VRChat")]
+        [MenuItem("Tools/M2V")]
         public static void Open()
         {
-            var window = GetWindow<WorldEditorWindow>("Minecraft2VRChat");
+            var window = GetWindow<WorldEditorWindow>("M2V");
             window.Show();
         }
 

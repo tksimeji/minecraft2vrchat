@@ -74,7 +74,7 @@ namespace M2V.Editor.GUI
                 Keys.LoadingReadingBlocks => "Reading blocks…",
                 Keys.LoadingGeneratingMesh => "Generating mesh…",
                 Keys.LoadingApplyingMaterial => "Applying material…",
-                Keys.DialogTitle => "Minecraft2VRChat",
+                Keys.DialogTitle => "M2V",
                 _ => key
             };
         }
@@ -136,7 +136,7 @@ namespace M2V.Editor.GUI
                 Keys.LoadingReadingBlocks => "ブロックを読み込み中…",
                 Keys.LoadingGeneratingMesh => "メッシュ生成中…",
                 Keys.LoadingApplyingMaterial => "マテリアル適用中…",
-                Keys.DialogTitle => "Minecraft2VRChat",
+                Keys.DialogTitle => "M2V",
                 _ => key
             };
         }

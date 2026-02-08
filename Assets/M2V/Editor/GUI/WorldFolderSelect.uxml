@@ -9,7 +9,7 @@
             </VisualElement>
 
             <VisualElement class="m2v-header">
-                <Label name="titleLabel" text="MINECRAFT2VRCHAT" class="m2v-title" />
+                <Label name="titleLabel" text="M2V" class="m2v-title" />
                 <Label name="subm2v-titleLabel" text="Java World Importer" class="subm2v-title" />
             </VisualElement>
 

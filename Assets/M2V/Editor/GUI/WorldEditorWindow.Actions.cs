@@ -552,7 +552,7 @@ namespace M2V.Editor.GUI
             Selection.activeObject = go;
             var modeLabel = job.Context.UseGreedy ? "Greedy" : "Naive";
             var vertexCount = job.BuiltChunks.Sum(c => c.Mesh.vertexCount);
-            Debug.Log($"[Minecraft2VRChat] {modeLabel} mesh generated. Vertices: {vertexCount}");
+            Debug.Log($"[M2V] {modeLabel} mesh generated. Vertices: {vertexCount}");
             job.Stage = MeshingStage.Done;
             job.Meter.Report(MeshingStage.Done, 1f);
             FinishMeshingJob();

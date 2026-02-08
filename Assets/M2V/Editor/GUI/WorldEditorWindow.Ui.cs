@@ -123,25 +123,25 @@ namespace M2V.Editor.GUI
             _currentPageIndex = 0;
             _nextWorldButton.clicked += () =>
             {
-                Debug.Log("[Minecraft2VRChat] Navigate: Worlds -> Range");
+                Debug.Log("[M2V] Navigate: Worlds -> Range");
                 SetPage(1);
             };
 
             _nextRangeButton.clicked += () =>
             {
-                Debug.Log("[Minecraft2VRChat] Navigate: Range -> Generate");
+                Debug.Log("[M2V] Navigate: Range -> Generate");
                 SetPage(2);
             };
 
             _backRangeButton.clicked += () =>
             {
-                Debug.Log("[Minecraft2VRChat] Navigate: Range -> Worlds");
+                Debug.Log("[M2V] Navigate: Range -> Worlds");
                 SetPage(0);
             };
 
             _backGenerateButton.clicked += () =>
             {
-                Debug.Log("[Minecraft2VRChat] Navigate: Generate -> Range");
+                Debug.Log("[M2V] Navigate: Generate -> Range");
                 SetPage(1);
             };
 

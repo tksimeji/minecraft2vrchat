@@ -31,7 +31,7 @@ namespace M2V.Editor.GUI
             var spawn = worldDir?.SpawnPos;
             if (spawn == null)
             {
-                Debug.Log("[Minecraft2VRChat] Spawn position not found. Keeping current range.");
+                Debug.Log("[M2V] Spawn position not found. Keeping current range.");
                 return;
             }
 
@@ -39,7 +39,7 @@ namespace M2V.Editor.GUI
             SyncStateToUi();
 
             var center = spawn.Value;
-            Debug.Log($"[Minecraft2VRChat] Spawn position: {center.x}, {center.y}, {center.z}. Range centered around spawn.");
+            Debug.Log($"[M2V] Spawn position: {center.x}, {center.y}, {center.z}. Range centered around spawn.");
         }
         private bool TryGetRange(out Vector3Int min, out Vector3Int max)
         {
