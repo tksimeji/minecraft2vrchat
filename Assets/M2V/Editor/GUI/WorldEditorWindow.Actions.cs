@@ -202,7 +202,7 @@ namespace M2V.Editor.GUI
                 LogSliceStats = false,
                 LogPaletteBounds = false,
                 UseTextureAtlas = true,
-                LogChunkOnce = s_logChunkDatOnce
+                LogChunkOnce = _sLOGChunkDatOnce
             };
 
             ShowLoadingOverlay();
@@ -541,7 +541,7 @@ namespace M2V.Editor.GUI
 
             if (job.Prepared != null)
             {
-                s_logChunkDatOnce = job.Prepared.LogChunkOnce;
+                _sLOGChunkDatOnce = job.Prepared.LogChunkOnce;
             }
 
             Selection.activeObject = go;

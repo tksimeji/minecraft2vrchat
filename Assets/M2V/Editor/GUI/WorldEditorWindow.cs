@@ -22,9 +22,9 @@ namespace M2V.Editor.GUI
         private IntegerField _maxXField = null!;
         private IntegerField _maxYField = null!;
         private IntegerField _maxZField = null!;
-        private VisualElement _rootElement = null!;
-        private DropdownField _languageDropdown = null!;
-        private VisualElement _languageHost = null!;
+        private VisualElement? _rootElement;
+        private DropdownField? _languageDropdown;
+        private VisualElement? _languageHost;
         private Label _titleLabel = null!;
         private Label _subtitleLabel = null!;
         private Label _worldsTitle = null!;
@@ -46,8 +46,8 @@ namespace M2V.Editor.GUI
         private Label _summaryDimension = null!;
         private Label _summaryScale = null!;
         private Label _summaryPacks = null!;
-        private Label _loadingTitle = null!;
-        private Button _cancelButton = null!;
+        private Label? _loadingTitle;
+        private Button? _cancelButton;
         private Button _dimensionOverworldButton = null!;
         private Button _dimensionNetherButton = null!;
         private Button _dimensionEndButton = null!;
@@ -62,7 +62,7 @@ namespace M2V.Editor.GUI
         private VisualElement _loadingOverlay = null!;
         private VisualElement _loadingBar = null!;
         private IVisualElementScheduledItem? _loadingAnimation;
-        private Label _loadingStatusLabel = null!;
+        private Label? _loadingStatusLabel;
         private Image _loadingMap = null!;
         private Button _nextWorldButton = null!;
         private Button _nextRangeButton = null!;
@@ -78,7 +78,7 @@ namespace M2V.Editor.GUI
         private IVisualElementScheduledItem? _pageAnimation;
 
         private readonly EditorState _state = new EditorState();
-        private static bool s_logChunkDatOnce;
+        private static bool _sLOGChunkDatOnce;
         private bool _isSyncingRange;
         private FloatField _blockScaleField = null!;
 

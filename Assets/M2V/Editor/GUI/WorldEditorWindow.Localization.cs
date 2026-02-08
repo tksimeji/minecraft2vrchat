@@ -13,6 +13,18 @@ namespace M2V.Editor.GUI
 
         private void ConfigureLanguageDropdown()
         {
+            if (_languageDropdown == null && _languageHost != null)
+            {
+                _languageDropdown = new DropdownField();
+                _languageDropdown.AddToClassList("m2v-topbar-dropdown");
+                _languageHost.Add(_languageDropdown);
+            }
+
+            if (_languageDropdown == null)
+            {
+                return;
+            }
+
             _languageDropdown.choices = new List<string> { "English", "日本語" };
             _state.Language = LoadPreferredLanguage();
             _languageDropdown.SetValueWithoutNotify(_state.Language == Language.Japanese ? "日本語" : "English");
@@ -47,7 +59,10 @@ namespace M2V.Editor.GUI
         private void ApplyLocalization()
         {
             var lang = _state.Language;
-            _rootElement.EnableInClassList("lang-ja", lang == Language.Japanese);
+            if (_rootElement != null)
+            {
+                _rootElement.EnableInClassList("lang-ja", lang == Language.Japanese);
+            }
             SetLabel(_titleLabel, Localization.Keys.Title, lang);
             SetLabel(_subtitleLabel, Localization.Keys.Subtitle, lang);
             SetLabel(_stepWorld, Localization.Keys.TabWorlds, lang);
@@ -67,8 +82,14 @@ namespace M2V.Editor.GUI
             SetLabel(_generateTitle, Localization.Keys.GenerateTitle, lang);
             SetLabel(_generateHint, Localization.Keys.GenerateHint, lang);
             SetLabel(_playCaption, Localization.Keys.PlayCaption, lang);
-            _loadingTitle.text = Localization.Get(lang, Localization.Keys.LoadingTitle);
-            _loadingStatusLabel.text = Localization.Get(lang, Localization.Keys.LoadingPreparing);
+            if (_loadingTitle != null)
+            {
+                _loadingTitle.text = Localization.Get(lang, Localization.Keys.LoadingTitle);
+            }
+            if (_loadingStatusLabel != null)
+            {
+                _loadingStatusLabel.text = Localization.Get(lang, Localization.Keys.LoadingPreparing);
+            }
 
             SetButton(_reloadButton, Localization.Keys.Reload, lang);
             SetButton(_customImportButton, Localization.Keys.SelectCustomFolder, lang);
@@ -83,13 +104,23 @@ namespace M2V.Editor.GUI
             UpdateSummary();
         }
 
-        private static void SetLabel(Label label, string key, Language language)
+        private static void SetLabel(Label? label, string key, Language language)
         {
+            if (label == null)
+            {
+                return;
+            }
+
             label.text = Localization.Get(language, key);
         }
 
-        private static void SetButton(Button button, string key, Language language)
+        private static void SetButton(Button? button, string key, Language language)
         {
+            if (button == null)
+            {
+                return;
+            }
+
             button.text = Localization.Get(language, key);
         }
     }
