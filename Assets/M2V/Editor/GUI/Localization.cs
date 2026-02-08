@@ -37,6 +37,7 @@ namespace M2V.Editor.GUI
                 Keys.RangeMax => "Max",
                 Keys.RangeDimension => "Dimension",
                 Keys.BlockScale => "Block Scale",
+                Keys.RangeBlockCount => "Blocks",
                 Keys.RangeHint => "Tip: You can edit values directly or adjust around spawn.",
                 Keys.DimensionOverworld => "Overworld",
                 Keys.DimensionNether => "Nether",
@@ -48,6 +49,7 @@ namespace M2V.Editor.GUI
                 Keys.PlayCaption => "Ready to build",
                 Keys.GenerateButton => "GENERATE",
                 Keys.Cancel => "Cancel",
+                Keys.DiscordJoin => "Join Discord",
                 Keys.SummaryWorld => "World",
                 Keys.SummaryRange => "Range",
                 Keys.SummaryDimension => "Dimension",
@@ -97,6 +99,7 @@ namespace M2V.Editor.GUI
                 Keys.RangeMax => "最大",
                 Keys.RangeDimension => "ディメンション",
                 Keys.BlockScale => "ブロックスケール",
+                Keys.RangeBlockCount => "ブロック数",
                 Keys.RangeHint => "ヒント: 数値を直接入力するか、スポーン周辺に調整できます。",
                 Keys.DimensionOverworld => "オーバーワールド",
                 Keys.DimensionNether => "ネザー",
@@ -108,6 +111,7 @@ namespace M2V.Editor.GUI
                 Keys.PlayCaption => "生成の準備完了",
                 Keys.GenerateButton => "生成",
                 Keys.Cancel => "キャンセル",
+                Keys.DiscordJoin => "Discordに参加",
                 Keys.SummaryWorld => "ワールド",
                 Keys.SummaryRange => "範囲",
                 Keys.SummaryDimension => "ディメンション",
@@ -155,6 +159,7 @@ namespace M2V.Editor.GUI
             internal const string RangeMax = "range.max";
             internal const string RangeDimension = "range.dimension";
             internal const string BlockScale = "range.block_scale";
+            internal const string RangeBlockCount = "range.block_count";
             internal const string RangeHint = "range.hint";
             internal const string DimensionOverworld = "dimension.overworld";
             internal const string DimensionNether = "dimension.nether";
@@ -166,6 +171,7 @@ namespace M2V.Editor.GUI
             internal const string PlayCaption = "generate.ready";
             internal const string GenerateButton = "generate.button";
             internal const string Cancel = "action.cancel";
+            internal const string DiscordJoin = "action.discord_join";
             internal const string SummaryWorld = "summary.world";
             internal const string SummaryRange = "summary.range";
             internal const string SummaryDimension = "summary.dimension";

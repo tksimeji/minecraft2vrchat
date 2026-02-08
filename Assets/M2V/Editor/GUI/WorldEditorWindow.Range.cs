@@ -192,6 +192,7 @@ namespace M2V.Editor.GUI
             _state.MaxY = _maxYField.value;
             _state.MaxZ = _maxZField.value;
             UpdateRangeButtons();
+            UpdateRangeBlockCount();
             UpdateSummary();
         }
         private void UpdateScaleFromUi()
@@ -232,7 +233,29 @@ namespace M2V.Editor.GUI
             }
             _isSyncingRange = false;
             UpdateRangeButtons();
+            UpdateRangeBlockCount();
             UpdateSummary();
+        }
+        private void UpdateRangeBlockCount()
+        {
+            if (_rangeBlockCountLabel == null)
+            {
+                return;
+            }
+
+            _state.GetRange(out var min, out var max);
+            var sizeX = max.x - min.x + 1;
+            var sizeY = max.y - min.y + 1;
+            var sizeZ = max.z - min.z + 1;
+            if (sizeX <= 0 || sizeY <= 0 || sizeZ <= 0)
+            {
+                _rangeBlockCountLabel.text = $"{Localization.Get(_state.Language, Localization.Keys.RangeBlockCount)}: -";
+                return;
+            }
+
+            var total = (long)sizeX * sizeY * sizeZ;
+            _rangeBlockCountLabel.text =
+                $"{Localization.Get(_state.Language, Localization.Keys.RangeBlockCount)}: {total:N0}";
         }
         private void UpdateRangeButtons()
         {

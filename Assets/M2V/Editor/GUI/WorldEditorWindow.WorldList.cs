@@ -122,14 +122,6 @@ namespace M2V.Editor.GUI
             _state.PopulateWorldEntries(savesPath, IsValidWorldFolder, TryGetWorldMeta, LoadWorldIcon);
 
             _worldList.Rebuild();
-
-            if (_worldList.selectedIndex < 0 && _state.EnsureDefaultSelection())
-            {
-                _worldList.SetSelection(0);
-                _state.SetCurrentWorld(null);
-                UpdateDimensionChoices(_state.GetSelectedPath());
-                ApplySpawnDefaultRange(_state.GetSelectedWorld());
-            }
         }
         private bool SelectWorldInList(DirectoryInfo path)
         {

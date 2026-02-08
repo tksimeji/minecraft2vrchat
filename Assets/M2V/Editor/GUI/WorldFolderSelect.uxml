@@ -5,6 +5,7 @@
             <VisualElement class="m2v-topbar">
                 <VisualElement name="languageHost" class="m2v-topbar-dropdown-host" />
                 <VisualElement class="m2v-topbar-spacer" />
+                <Button name="discordButton" text="Join Discord" class="m2v-button m2v-button--discord m2v-topbar-discord" />
             </VisualElement>
 
             <VisualElement class="m2v-header">
@@ -48,15 +49,15 @@
                         <Label name="rangeHint" text="Tip: You can edit values directly or adjust around spawn." class="m2v-hint" />
                         <VisualElement class="m2v-coord-row">
                             <Label name="rangeMinLabel" text="Min" class="m2v-coord-label" />
-                            <IntegerField name="minXField" class="m2v-coord-field" label="X" />
-                            <IntegerField name="minYField" class="m2v-coord-field" label="Y" />
-                            <IntegerField name="minZField" class="m2v-coord-field" label="Z" />
+                            <IntegerField name="minXField" class="m2v-coord-field coord-x" label="X" />
+                            <IntegerField name="minYField" class="m2v-coord-field coord-y" label="Y" />
+                            <IntegerField name="minZField" class="m2v-coord-field coord-z" label="Z" />
                         </VisualElement>
                         <VisualElement class="m2v-coord-row">
                             <Label name="rangeMaxLabel" text="Max" class="m2v-coord-label" />
-                            <IntegerField name="maxXField" class="m2v-coord-field" label="X" />
-                            <IntegerField name="maxYField" class="m2v-coord-field" label="Y" />
-                            <IntegerField name="maxZField" class="m2v-coord-field" label="Z" />
+                            <IntegerField name="maxXField" class="m2v-coord-field coord-x" label="X" />
+                            <IntegerField name="maxYField" class="m2v-coord-field coord-y" label="Y" />
+                            <IntegerField name="maxZField" class="m2v-coord-field coord-z" label="Z" />
                         </VisualElement>
                         <VisualElement class="m2v-coord-row">
                             <Label name="rangeDimensionLabel" text="Dimension" class="m2v-coord-label" />
@@ -79,6 +80,7 @@
                             <Label name="blockScaleLabel" text="Block Scale" class="m2v-coord-label" />
                             <FloatField name="blockScaleField" class="m2v-coord-field" label="" />
                         </VisualElement>
+                        <Label name="rangeBlockCountLabel" text="Blocks: -" class="m2v-hint" />
 
                         <VisualElement class="m2v-divider" />
                         <VisualElement class="m2v-wizard-spacer" />

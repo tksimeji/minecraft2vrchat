@@ -4,44 +4,44 @@
     justify-content: flex-start;
     align-items: center;
     background-color: #0f0f0f;
-    -unity-font-definition: url("mojangles_font.asset");
-    -unity-font: url("mojangles.ttf");
+    -unity-font-definition: resource("Mojangles SDF");
     color: #ffffff;
 }
 
 .m2v-root * {
-    -unity-font-definition: url("mojangles_font.asset");
-    -unity-font: url("mojangles.ttf");
+    -unity-font-definition: resource("Mojangles SDF");
 }
 
 .m2v-root.lang-ja {
-    -unity-font-definition: url("mojangles_font.asset");
+    -unity-font-definition: resource("Mojangles SDF");
 }
 
 .m2v-root.lang-ja * {
-    -unity-font-definition: url("mojangles_font.asset");
+    -unity-font-definition: resource("Mojangles SDF");
 }
 
 .m2v-shell {
-    width: 900px;
-    max-width: 96%;
-    margin-top: 18px;
-    background-color: #1b1b1b;
-    border-width: 1px;
+    width: 980px;
+    max-width: 98%;
+    margin-top: 16px;
+    margin-bottom: 16px;
+    background-color: #191919;
+    border-width: 2px;
     border-color: #050505;
     flex-direction: column;
     align-items: stretch;
+    flex-grow: 1;
 }
 
 .m2v-topbar {
-    height: 28px;
-    padding-left: 10px;
-    padding-right: 10px;
+    height: 32px;
+    padding-left: 12px;
+    padding-right: 12px;
     flex-direction: row;
     align-items: center;
     background-color: #0c0c0c;
-    border-width: 0 0 1px 0;
-    border-color: #000000;
+    border-width: 0 0 2px 0;
+    border-color: #050505;
 }
 
 .m2v-topbar-item {
@@ -80,11 +80,13 @@
 }
 
 .m2v-header {
-    padding: 10px 16px;
-    background-color: #141414;
-    border-width: 0 0 1px 0;
-    border-color: #000000;
-    align-items: center;
+    padding: 12px 18px;
+    background-color: #151515;
+    border-width: 0 0 2px 0;
+    border-color: #0a0a0a;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .m2v-title {
@@ -99,32 +101,52 @@
     color: #c0c0c0;
 }
 
+.m2v-button.m2v-button--discord {
+    height: 22px;
+    min-width: 120px;
+    margin-top: 0px;
+    background-color: #5865F2;
+    border-width: 2px;
+    border-color: #2b317a;
+    color: #ffffff;
+    unity-font-style: bold;
+}
+
+.m2v-button.m2v-button--discord:hover {
+    background-color: #6a75ff;
+    border-color: #3a46a6;
+}
+
+.m2v-topbar-discord {
+    margin-left: auto;
+}
+
 .m2v-tabs {
     flex-direction: row;
     align-items: stretch;
-    background-color: #1f1f1f;
-    border-width: 0 0 1px 0;
+    background-color: #1a1a1a;
+    border-width: 0 0 2px 0;
     border-color: #0a0a0a;
-    padding-left: 12px;
-    padding-right: 12px;
-    padding-top: 6px;
-    padding-bottom: 6px;
-    gap: 8px;
-    justify-content: center;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    gap: 6px;
+    justify-content: flex-start;
 }
 
 .m2v-tab {
-    height: 30px;
+    height: 32px;
     flex-grow: 1;
     padding-left: 12px;
     padding-right: 12px;
-    background-color: #262626;
+    background-color: #232323;
     border-width: 2px;
     border-color: #000000;
-    border-top-color: #353535;
-    border-left-color: #353535;
-    border-bottom-color: #141414;
-    border-right-color: #141414;
+    border-top-color: #3a3a3a;
+    border-left-color: #3a3a3a;
+    border-bottom-color: #121212;
+    border-right-color: #121212;
     color: #dcdcdc;
     unity-font-style: bold;
     text-align: center;
@@ -163,8 +185,9 @@
 .m2v-body {
     flex-direction: column;
     align-items: stretch;
-    padding: 12px;
-    height: 460px;
+    padding: 14px;
+    min-height: 520px;
+    flex-grow: 1;
     position: relative;
 }
 
@@ -180,10 +203,10 @@
 }
 
 .m2v-panel {
-    padding: 12px;
-    padding-bottom: 72px;
-    background-color: #1a1a1a;
-    border-width: 1px;
+    padding: 16px;
+    padding-bottom: 80px;
+    background-color: #181818;
+    border-width: 2px;
     border-color: #0f0f0f;
     flex-direction: column;
     align-items: stretch;
@@ -224,9 +247,9 @@
 }
 
 .m2v-list-frame {
-    padding: 4px;
-    background-color: #202020;
-    border-width: 1px;
+    padding: 6px;
+    background-color: #1b1b1b;
+    border-width: 2px;
     border-color: #0e0e0e;
     flex-grow: 1;
     flex-direction: column;
@@ -234,9 +257,9 @@
 
 .m2v-dropzone {
     margin-bottom: 6px;
-    padding: 8px;
-    background-color: #151515;
-    border-width: 1px;
+    padding: 10px;
+    background-color: #141414;
+    border-width: 2px;
     border-color: #0f0f0f;
     flex-direction: row;
     align-items: center;
@@ -256,11 +279,12 @@
 .m2v-coord-row {
     flex-direction: row;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    gap: 6px;
 }
 
 .m2v-coord-label {
-    width: 78px;
+    width: 92px;
     font-size: 11px;
     color: #e0e0e0;
 }
@@ -282,6 +306,18 @@
     min-width: 14px;
     margin-right: 4px;
     color: #bdbdbd;
+}
+
+.m2v-coord-field.coord-x .unity-base-field__label {
+    color: #ff6b6b;
+}
+
+.m2v-coord-field.coord-y .unity-base-field__label {
+    color: #6bff8a;
+}
+
+.m2v-coord-field.coord-z .unity-base-field__label {
+    color: #6bb6ff;
 }
 
 .m2v-coord-field .unity-base-field__input {
@@ -448,10 +484,10 @@
 }
 
 .m2v-play-bar {
-    margin-top: 10px;
-    padding: 10px;
-    background-color: #121212;
-    border-width: 1px;
+    margin-top: 12px;
+    padding: 12px;
+    background-color: #111111;
+    border-width: 2px;
     border-color: #0b0b0b;
     flex-direction: row;
     align-items: center;
@@ -464,8 +500,8 @@
 }
 
 .m2v-play-button {
-    height: 36px;
-    min-width: 160px;
+    height: 38px;
+    min-width: 180px;
     background-color: #2da832;
     border-width: 2px;
     border-color: #000000;
@@ -502,7 +538,7 @@
 
 .m2v-hint {
     font-size: 11px;
-    color: #b5b5b5;
+    color: #f5d76e;
 }
 
 .m2v-world-list {

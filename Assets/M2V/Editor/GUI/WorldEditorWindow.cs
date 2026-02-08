@@ -35,6 +35,7 @@ namespace M2V.Editor.GUI
         private Label _rangeMaxLabel = null!;
         private Label _rangeDimensionLabel = null!;
         private Label _blockScaleLabel = null!;
+        private Label _rangeBlockCountLabel = null!;
         private Label _dimensionOverworldLabel = null!;
         private Label _dimensionNetherLabel = null!;
         private Label _dimensionEndLabel = null!;
@@ -48,6 +49,7 @@ namespace M2V.Editor.GUI
         private Label _summaryPacks = null!;
         private Label? _loadingTitle;
         private Button? _cancelButton;
+        private Button? _discordButton;
         private Button _dimensionOverworldButton = null!;
         private Button _dimensionNetherButton = null!;
         private Button _dimensionEndButton = null!;
@@ -77,7 +79,7 @@ namespace M2V.Editor.GUI
         private int _currentPageIndex;
         private IVisualElementScheduledItem? _pageAnimation;
 
-        private readonly EditorState _state = new EditorState();
+        private readonly EditorState _state = new();
         private static bool _sLOGChunkDatOnce;
         private bool _isSyncingRange;
         private FloatField _blockScaleField = null!;
@@ -146,6 +148,5 @@ namespace M2V.Editor.GUI
                 EditorGUILayout.HelpBox("UI failed to load. Check Console for missing assets.", MessageType.Error);
             }
         }
-
     }
 }

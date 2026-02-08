@@ -48,6 +48,7 @@ namespace M2V.Editor.GUI
             _rangeMaxLabel = rootVisualElement.Q<Label>("rangeMaxLabel");
             _rangeDimensionLabel = rootVisualElement.Q<Label>("rangeDimensionLabel");
             _blockScaleLabel = rootVisualElement.Q<Label>("blockScaleLabel");
+            _rangeBlockCountLabel = rootVisualElement.Q<Label>("rangeBlockCountLabel");
             _blockScaleField = rootVisualElement.Q<FloatField>("blockScaleField");
             _dimensionOverworldLabel = rootVisualElement.Q<Label>("dimensionOverworldLabel");
             _dimensionNetherLabel = rootVisualElement.Q<Label>("dimensionNetherLabel");
@@ -76,6 +77,7 @@ namespace M2V.Editor.GUI
             _loadingStatusLabel = rootVisualElement.Q<Label>("loadingStatusLabel");
             _loadingMap = rootVisualElement.Q<Image>("loadingMap");
             _cancelButton = rootVisualElement.Q<Button>("cancelButton");
+            _discordButton = rootVisualElement.Q<Button>("discordButton");
             _nextWorldButton = rootVisualElement.Q<Button>("nextButtonWorld");
             _nextRangeButton = rootVisualElement.Q<Button>("nextButtonRange");
             _backRangeButton = rootVisualElement.Q<Button>("backButtonRange");
@@ -108,6 +110,10 @@ namespace M2V.Editor.GUI
             _clearButton.clicked += OnClickClear;
             _meshButton.clicked += OnClickGenerateMesh;
             _cancelButton.clicked += CancelMeshing;
+            if (_discordButton != null)
+            {
+                _discordButton.clicked += OnClickDiscord;
+            }
 
             BindNavigation();
         }

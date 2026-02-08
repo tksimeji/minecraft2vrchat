@@ -18,6 +18,7 @@ namespace M2V.Editor.GUI
 {
     public partial class WorldEditorWindow
     {
+        private const string DiscordInviteUrl = "https://discord.com/invite/Dus2WmpvUE";
         private const int ChunkGroupSize = 4;
         private MeshingJob? _meshingJob;
         private IVisualElementScheduledItem? _meshingUpdate;
@@ -147,6 +148,10 @@ namespace M2V.Editor.GUI
             }
 
             StartMeshGeneration();
+        }
+        private void OnClickDiscord()
+        {
+            Application.OpenURL(DiscordInviteUrl);
         }
         private void CancelMeshing()
         {
