@@ -47,6 +47,7 @@ namespace M2V.Editor.GUI
         private Label _summaryScale = null!;
         private Label _summaryPacks = null!;
         private Label _loadingTitle = null!;
+        private Button _cancelButton = null!;
         private Button _dimensionOverworldButton = null!;
         private Button _dimensionNetherButton = null!;
         private Button _dimensionEndButton = null!;
@@ -62,6 +63,7 @@ namespace M2V.Editor.GUI
         private VisualElement _loadingBar = null!;
         private IVisualElementScheduledItem? _loadingAnimation;
         private Label _loadingStatusLabel = null!;
+        private Image _loadingMap = null!;
         private Button _nextWorldButton = null!;
         private Button _nextRangeButton = null!;
         private Button _backRangeButton = null!;
@@ -91,6 +93,10 @@ namespace M2V.Editor.GUI
         {
             EnsureServices();
             BuildUi();
+        }
+        private void OnDisable()
+        {
+            CancelMeshing();
         }
 
         public void CreateGUI()

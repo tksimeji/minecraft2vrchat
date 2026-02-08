@@ -1,7 +1,9 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Text.Json.Serialization;
 using fNbt;
 
@@ -14,6 +16,8 @@ namespace M2V.Editor.Minecraft.Model
     /// <seealso href="https://mcsrc.dev/#1/26.1-snapshot-5/net/minecraft/client/renderer/block/model/BlockModelDefinition"/>
     public sealed record BlockModelDefinition
     {
+        private static readonly ThreadLocal<Random> RandomSource = new(() => new Random());
+
         [JsonPropertyName("variants")] public SimpleModelSelectors? SimpleModels { get; init; }
         [JsonPropertyName("multipart")] public MultiPartDefinition? MultiPart { get; init; }
 
@@ -58,7 +62,7 @@ namespace M2V.Editor.Minecraft.Model
 
             if (totalWeight <= 0) return variants[0];
 
-            var roll = UnityEngine.Random.Range(0, totalWeight);
+            var roll = RandomSource.Value!.Next(totalWeight);
             
             foreach (var variant in variants)
             {

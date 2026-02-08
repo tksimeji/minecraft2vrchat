@@ -598,22 +598,18 @@
     right: 0px;
     top: 0px;
     bottom: 0px;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: #101010;
     align-items: center;
     justify-content: center;
     display: none;
 }
 
 .m2v-loading-panel {
-    width: 280px;
-    padding: 14px;
-    background-color: #2a2a2a;
-    border-width: 2px;
-    border-color: #000000;
-    border-top-color: #3a3a3a;
-    border-left-color: #3a3a3a;
-    border-bottom-color: #1a1a1a;
-    border-right-color: #1a1a1a;
+    width: 100%;
+    height: 100%;
+    padding: 24px;
+    background-color: #141414;
+    border-width: 0px;
     align-items: stretch;
 }
 
@@ -628,6 +624,17 @@
     font-size: 11px;
     color: #d0d0d0;
     margin-bottom: 8px;
+}
+
+.m2v-loading-map {
+    width: 220px;
+    height: 220px;
+    align-self: center;
+    margin-bottom: 12px;
+    border-width: 2px;
+    border-color: #000000;
+    background-color: #141414;
+    unity-background-scale-mode: scale-to-fit;
 }
 
 .m2v-loading-bar-frame {
@@ -647,4 +654,11 @@
     height: 100%;
     width: 0%;
     background-color: #2da832;
+}
+
+.m2v-loading-actions {
+    margin-top: 12px;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
 }

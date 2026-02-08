@@ -9,11 +9,6 @@ namespace M2V.Editor.GUI
     {
         private void ShowLoadingOverlay()
         {
-            if (_loadingOverlay == null)
-            {
-                return;
-            }
-
             _loadingOverlay.style.display = DisplayStyle.Flex;
             SetLoadingStatus(Localization.Get(_state.Language, Localization.Keys.LoadingPreparing));
             StartLoadingAnimation();
@@ -21,31 +16,22 @@ namespace M2V.Editor.GUI
         }
         private void HideLoadingOverlay()
         {
-            if (_loadingOverlay == null)
-            {
-                return;
-            }
-
             StopLoadingAnimation();
             _loadingOverlay.style.display = DisplayStyle.None;
             Repaint();
         }
         private void SetLoadingStatus(string text)
         {
-            if (_loadingStatusLabel == null)
-            {
-                return;
-            }
-
             _loadingStatusLabel.text = text;
+        }
+        private void SetLoadingProgress(float progress)
+        {
+            StopLoadingAnimation();
+            var clamped = Mathf.Clamp01(progress);
+            _loadingBar.style.width = new Length(100f * clamped, LengthUnit.Percent);
         }
         private void StartLoadingAnimation()
         {
-            if (_loadingBar == null)
-            {
-                return;
-            }
-
             _loadingAnimation?.Pause();
             var start = Time.realtimeSinceStartup;
             _loadingAnimation = rootVisualElement.schedule.Execute(() =>
@@ -58,10 +44,7 @@ namespace M2V.Editor.GUI
         private void StopLoadingAnimation()
         {
             _loadingAnimation?.Pause();
-            if (_loadingBar != null)
-            {
-                _loadingBar.style.width = new Length(0f, LengthUnit.Percent);
-            }
+            _loadingBar.style.width = new Length(0f, LengthUnit.Percent);
         }
     }
 }

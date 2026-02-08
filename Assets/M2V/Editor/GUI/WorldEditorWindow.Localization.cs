@@ -13,18 +13,6 @@ namespace M2V.Editor.GUI
 
         private void ConfigureLanguageDropdown()
         {
-            if (_languageDropdown == null && _languageHost != null)
-            {
-                _languageDropdown = new DropdownField();
-                _languageDropdown.AddToClassList("m2v-topbar-dropdown");
-                _languageHost.Add(_languageDropdown);
-            }
-
-            if (_languageDropdown == null)
-            {
-                return;
-            }
-
             _languageDropdown.choices = new List<string> { "English", "日本語" };
             _state.Language = LoadPreferredLanguage();
             _languageDropdown.SetValueWithoutNotify(_state.Language == Language.Japanese ? "日本語" : "English");
@@ -37,32 +25,29 @@ namespace M2V.Editor.GUI
                 UpdateValidation();
             });
         }
+
         private static Language LoadPreferredLanguage()
         {
-            if (EditorPrefs.HasKey(LanguagePrefKey))
-            {
-                var stored = EditorPrefs.GetString(LanguagePrefKey, "en");
-                return string.Equals(stored, "ja", System.StringComparison.OrdinalIgnoreCase)
+            if (!EditorPrefs.HasKey(LanguagePrefKey))
+                return Application.systemLanguage == SystemLanguage.Japanese
                     ? Language.Japanese
                     : Language.English;
-            }
-
-            return Application.systemLanguage == SystemLanguage.Japanese
+            var stored = EditorPrefs.GetString(LanguagePrefKey, "en");
+            return string.Equals(stored, "ja", System.StringComparison.OrdinalIgnoreCase)
                 ? Language.Japanese
                 : Language.English;
         }
+
         private static void SavePreferredLanguage(Language language)
         {
             var value = language == Language.Japanese ? "ja" : "en";
             EditorPrefs.SetString(LanguagePrefKey, value);
         }
+
         private void ApplyLocalization()
         {
             var lang = _state.Language;
-            if (_rootElement != null)
-            {
-                _rootElement.EnableInClassList("lang-ja", lang == Language.Japanese);
-            }
+            _rootElement.EnableInClassList("lang-ja", lang == Language.Japanese);
             SetLabel(_titleLabel, Localization.Keys.Title, lang);
             SetLabel(_subtitleLabel, Localization.Keys.Subtitle, lang);
             SetLabel(_stepWorld, Localization.Keys.TabWorlds, lang);
@@ -82,42 +67,29 @@ namespace M2V.Editor.GUI
             SetLabel(_generateTitle, Localization.Keys.GenerateTitle, lang);
             SetLabel(_generateHint, Localization.Keys.GenerateHint, lang);
             SetLabel(_playCaption, Localization.Keys.PlayCaption, lang);
-            if (_loadingTitle != null)
-            {
-                _loadingTitle.text = Localization.Get(lang, Localization.Keys.LoadingTitle);
-            }
-            if (_loadingStatusLabel != null)
-            {
-                _loadingStatusLabel.text = Localization.Get(lang, Localization.Keys.LoadingPreparing);
-            }
+            _loadingTitle.text = Localization.Get(lang, Localization.Keys.LoadingTitle);
+            _loadingStatusLabel.text = Localization.Get(lang, Localization.Keys.LoadingPreparing);
 
             SetButton(_reloadButton, Localization.Keys.Reload, lang);
             SetButton(_customImportButton, Localization.Keys.SelectCustomFolder, lang);
             SetButton(_openButton, Localization.Keys.OpenFolder, lang);
             SetButton(_clearButton, Localization.Keys.Clear, lang);
             SetButton(_meshButton, Localization.Keys.GenerateButton, lang);
+            SetButton(_cancelButton, Localization.Keys.Cancel, lang);
             SetButton(_nextWorldButton, Localization.Keys.Next, lang);
             SetButton(_nextRangeButton, Localization.Keys.Next, lang);
             SetButton(_backRangeButton, Localization.Keys.Back, lang);
             SetButton(_backGenerateButton, Localization.Keys.Back, lang);
             UpdateSummary();
         }
+
         private static void SetLabel(Label label, string key, Language language)
         {
-            if (label == null)
-            {
-                return;
-            }
-
             label.text = Localization.Get(language, key);
         }
+
         private static void SetButton(Button button, string key, Language language)
         {
-            if (button == null)
-            {
-                return;
-            }
-
             button.text = Localization.Get(language, key);
         }
     }

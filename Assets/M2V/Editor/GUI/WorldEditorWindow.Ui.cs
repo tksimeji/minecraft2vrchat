@@ -15,7 +15,6 @@ namespace M2V.Editor.GUI
                 return;
             }
 
-            ValidateWizardElements();
             ConfigureWorldList();
             RefreshWorldList();
             InitializeUiState();
@@ -25,6 +24,7 @@ namespace M2V.Editor.GUI
             UpdateValidation();
             SetPage(0);
         }
+
         private void BindElements()
         {
             _statusLabel = rootVisualElement.Q<Label>("statusLabel");
@@ -74,6 +74,8 @@ namespace M2V.Editor.GUI
             _loadingOverlay = rootVisualElement.Q<VisualElement>("loadingOverlay");
             _loadingBar = rootVisualElement.Q<VisualElement>("loadingBar");
             _loadingStatusLabel = rootVisualElement.Q<Label>("loadingStatusLabel");
+            _loadingMap = rootVisualElement.Q<Image>("loadingMap");
+            _cancelButton = rootVisualElement.Q<Button>("cancelButton");
             _nextWorldButton = rootVisualElement.Q<Button>("nextButtonWorld");
             _nextRangeButton = rootVisualElement.Q<Button>("nextButtonRange");
             _backRangeButton = rootVisualElement.Q<Button>("backButtonRange");
@@ -87,15 +89,7 @@ namespace M2V.Editor.GUI
             _stepRange = rootVisualElement.Q<Label>("stepRange");
             _stepGenerate = rootVisualElement.Q<Label>("stepGenerate");
         }
-        private void ValidateWizardElements()
-        {
-            if (_nextWorldButton == null || _nextRangeButton == null ||
-                _backRangeButton == null || _backGenerateButton == null ||
-                _pageWorld == null || _pageRange == null || _pageGenerate == null)
-            {
-                Debug.LogWarning("[Minecraft2VRChat] Wizard navigation elements missing. Check UXML names.");
-            }
-        }
+
         private void InitializeUiState()
         {
             _state.SetDefaultRange();
@@ -105,6 +99,7 @@ namespace M2V.Editor.GUI
             ConfigureLanguageDropdown();
             ApplyLocalization();
         }
+
         private void BindUiEvents()
         {
             _customImportButton.clicked += OnClickCustomImport;
@@ -112,66 +107,48 @@ namespace M2V.Editor.GUI
             _openButton.clicked += OnClickOpen;
             _clearButton.clicked += OnClickClear;
             _meshButton.clicked += OnClickGenerateMesh;
+            _cancelButton.clicked += CancelMeshing;
+
             BindNavigation();
         }
+
         private void BindNavigation()
         {
             _currentPageIndex = 0;
-            if (_nextWorldButton != null)
+            _nextWorldButton.clicked += () =>
             {
-                _nextWorldButton.clicked += () =>
-                {
-                    Debug.Log("[Minecraft2VRChat] Navigate: Worlds -> Range");
-                    SetPage(1);
-                };
-            }
-            if (_nextRangeButton != null)
+                Debug.Log("[Minecraft2VRChat] Navigate: Worlds -> Range");
+                SetPage(1);
+            };
+
+            _nextRangeButton.clicked += () =>
             {
-                _nextRangeButton.clicked += () =>
-                {
-                    Debug.Log("[Minecraft2VRChat] Navigate: Range -> Generate");
-                    SetPage(2);
-                };
-            }
-            if (_backRangeButton != null)
+                Debug.Log("[Minecraft2VRChat] Navigate: Range -> Generate");
+                SetPage(2);
+            };
+
+            _backRangeButton.clicked += () =>
             {
-                _backRangeButton.clicked += () =>
-                {
-                    Debug.Log("[Minecraft2VRChat] Navigate: Range -> Worlds");
-                    SetPage(0);
-                };
-            }
-            if (_backGenerateButton != null)
+                Debug.Log("[Minecraft2VRChat] Navigate: Range -> Worlds");
+                SetPage(0);
+            };
+
+            _backGenerateButton.clicked += () =>
             {
-                _backGenerateButton.clicked += () =>
-                {
-                    Debug.Log("[Minecraft2VRChat] Navigate: Generate -> Range");
-                    SetPage(1);
-                };
-            }
-            if (_stepWorld != null)
-            {
-                _stepWorld.RegisterCallback<ClickEvent>(_ => SetPage(0));
-            }
-            if (_stepRange != null)
-            {
-                _stepRange.RegisterCallback<ClickEvent>(_ => SetPage(1));
-            }
-            if (_stepGenerate != null)
-            {
-                _stepGenerate.RegisterCallback<ClickEvent>(_ => SetPage(2));
-            }
+                Debug.Log("[Minecraft2VRChat] Navigate: Generate -> Range");
+                SetPage(1);
+            };
+
+            _stepWorld.RegisterCallback<ClickEvent>(_ => SetPage(0));
+            _stepRange.RegisterCallback<ClickEvent>(_ => SetPage(1));
+            _stepGenerate.RegisterCallback<ClickEvent>(_ => SetPage(2));
         }
+
         private bool IsUiReady(Button? clearButton, Button? customImportButton, Button? reloadButton)
         {
-            return _statusLabel != null && _worldList != null &&
-                   _minXField != null && _minYField != null && _minZField != null &&
-                   _maxXField != null && _maxYField != null && _maxZField != null &&
-                   _blockScaleField != null &&
-                   _dimensionOverworldButton != null && _dimensionNetherButton != null && _dimensionEndButton != null &&
-                   _openButton != null && clearButton != null && _meshButton != null &&
-                   customImportButton != null && reloadButton != null;
+            return clearButton != null && customImportButton != null && reloadButton != null;
         }
+
         private void SetPage(int pageIndex)
         {
             var previous = _currentPageIndex;
@@ -191,6 +168,7 @@ namespace M2V.Editor.GUI
             SetPageActive(_pageRange, pageIndex == 1);
             SetPageActive(_pageGenerate, pageIndex == 2);
         }
+
         private static void SetPageActive(VisualElement? page, bool active)
         {
             if (page == null)
@@ -201,6 +179,7 @@ namespace M2V.Editor.GUI
             page.EnableInClassList("active", active);
             page.style.display = active ? DisplayStyle.Flex : DisplayStyle.None;
         }
+
         private static void SetStepActive(Label? step, bool active)
         {
             if (step == null)
@@ -210,6 +189,7 @@ namespace M2V.Editor.GUI
 
             step.EnableInClassList("m2v-tab--active", active);
         }
+
         private void AnimateTransition(int fromIndex, int toIndex)
         {
             var from = GetPageByIndex(fromIndex);
@@ -254,7 +234,8 @@ namespace M2V.Editor.GUI
                 to.style.left = new Length(toX, LengthUnit.Pixel);
             }).Every(16);
         }
-        private VisualElement GetPageByIndex(int index)
+
+        private VisualElement? GetPageByIndex(int index)
         {
             return index switch
             {

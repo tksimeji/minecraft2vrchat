@@ -4,11 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 using M2V.Editor.Bakery.Meshing;
+using M2V.Editor.Bakery.Tinting;
 using M2V.Editor.Minecraft;
 using M2V.Editor.Minecraft.World;
-using DomainWorld = M2V.Editor.Minecraft.World.World;
 
 namespace M2V.Editor.Bakery
 {
@@ -17,8 +18,10 @@ namespace M2V.Editor.Bakery
         private readonly List<IDisposable> _disposables = new();
         private AssetReader _modelReader = null!;
         private AssetReader _biomeReader = null!;
-        private DomainWorld _world = null!;
+        private World _world = null!;
         private bool _initialized;
+
+        public AssetReader ModelReader => _modelReader;
 
         private M2VBakery()
         {
@@ -35,6 +38,91 @@ namespace M2V.Editor.Bakery
         public Baked Bake(BakeryContext context)
         {
             return ExecuteMeshing(context);
+        }
+        public PreparedMeshing? PrepareMeshing(
+            BakeryContext context,
+            BlockTintResolver.ColormapSet colormaps,
+            out string message,
+            Action<float>? reportProgress = null,
+            Action<int, int>? reportChunkCoords = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            message = string.Empty;
+            if (!_initialized)
+            {
+                message = "Bakery is not initialized.";
+                return null;
+            }
+
+            var min = context.Min;
+            var max = context.Max;
+            var sizeX = max.x - min.x + 1;
+            var sizeY = max.y - min.y + 1;
+            var sizeZ = max.z - min.z + 1;
+            if (sizeX <= 0 || sizeY <= 0 || sizeZ <= 0)
+            {
+                message = "Invalid range: size <= 0.";
+                return null;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var world = _world;
+            var modelReader = _modelReader;
+            var biomeReader = _biomeReader;
+
+            var biomeRegistry = new BiomeIndex(biomeReader);
+            var logOnce = context.LogChunkOnce;
+            if (!Volume.TryCreate(world, context.LevelStem, min, max, biomeRegistry,
+                    context.LogPaletteBounds, ref logOnce, out var volume,
+                    progress => reportProgress?.Invoke(progress),
+                    reportChunkCoords,
+                    cancellationToken))
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    message = "Cancelled.";
+                    return null;
+                }
+
+                message = "Failed to read blocks for meshing (region folder missing or read failure).";
+                return null;
+            }
+
+            if (context.LogSliceStats)
+            {
+                LogSolidSliceStats(volume, min);
+            }
+
+            if (!volume.HasSolidBlocks())
+            {
+                message =
+                    $"No solid blocks found in range (all air or missing data). Blocks: {volume.TotalBlocks}, States: {volume.BlockStateCount}.";
+                return null;
+            }
+
+            var blockModelResolver = new BlockModelResolver(modelReader);
+            var blockModelIndex = blockModelResolver.BuildBlockVariants(volume.BlockStates);
+            var fullCubeById = blockModelResolver.BuildFullCubeFlags(blockModelIndex);
+            var texturePaths = blockModelResolver.CollectTexturePaths(blockModelIndex);
+            texturePaths.Add(ResourceLocation.Of("block/dirt"));
+            Fluid.AddFluidTextures(texturePaths, volume.BlockStates);
+
+            var tintByBlock = BlockTintResolver.BuildTintByBlock(volume, biomeRegistry, colormaps);
+
+            reportProgress?.Invoke(1f);
+
+            return new PreparedMeshing(
+                volume,
+                blockModelResolver,
+                blockModelIndex,
+                fullCubeById,
+                texturePaths,
+                tintByBlock,
+                modelReader,
+                logOnce
+            );
         }
 
         public void Dispose()
@@ -346,21 +434,21 @@ namespace M2V.Editor.Bakery
         }
     }
 
-    public sealed record BakeryContext
-    {
-        public string WorldFolder { get; init; } = string.Empty;
-        public string MinecraftJarPath { get; init; } = string.Empty;
-        public LevelStem LevelStem { get; init; }
-        public Vector3Int Min { get; init; }
-        public Vector3Int Max { get; init; }
-        public bool UseGreedy { get; init; }
-        public bool ApplyCoordinateTransform { get; init; }
-        public float BlockScale { get; init; }
-        public bool LogSliceStats { get; init; }
-        public bool LogPaletteBounds { get; init; }
-        public bool UseTextureAtlas { get; init; }
-        public bool LogChunkOnce { get; init; }
-    }
+        public sealed record BakeryContext
+        {
+            public string WorldFolder { get; init; } = string.Empty;
+            public string MinecraftJarPath { get; init; } = string.Empty;
+            public LevelStem LevelStem { get; init; }
+            public Vector3Int Min { get; init; }
+            public Vector3Int Max { get; init; }
+            public bool UseGreedy { get; init; }
+            public bool ApplyCoordinateTransform { get; init; }
+            public float BlockScale { get; init; }
+            public bool LogSliceStats { get; init; }
+            public bool LogPaletteBounds { get; init; }
+            public bool UseTextureAtlas { get; init; }
+            public bool LogChunkOnce { get; init; }
+        }
 
         public sealed record Baked
         {
@@ -370,4 +458,14 @@ namespace M2V.Editor.Bakery
             public string Message { get; set; } = string.Empty;
             public bool LogChunkOnce { get; set; }
         }
+        public sealed record PreparedMeshing(
+            Volume Volume,
+            BlockModelResolver BlockModelResolver,
+            BlockModelIndex BlockModelIndex,
+            List<bool> FullCubeById,
+            HashSet<ResourceLocation> TexturePaths,
+            IReadOnlyList<Color32Byte> TintByBlock,
+            AssetReader ModelReader,
+            bool LogChunkOnce
+        );
 }

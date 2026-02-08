@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using M2V.Editor.Bakery.Tinting;
 using M2V.Editor.Minecraft;
 using M2V.Editor.Minecraft.Model;
@@ -15,6 +16,8 @@ namespace M2V.Editor.Bakery.Meshing
         private const float ThinEpsilon = 0.0001f;
 
         public sealed record BuildResult(Mesh? Mesh, Texture2D AtlasTexture, AtlasAnimation? AtlasAnimation);
+        public sealed record MeshBuildData(MeshBuffer Buffer);
+        public sealed record MeshChunkData(int ChunkX, int ChunkZ, MeshBuildData? Data);
 
         public static BuildResult Build(
             Volume volume,
@@ -31,8 +34,8 @@ namespace M2V.Editor.Bakery.Meshing
             texturePaths.Add(FallbackTexture);
             Fluid.AddFluidTextures(texturePaths, volume.BlockStates);
 
-            var tintResolver = new BlockTintResolver(assetReader, biomeIndex);
-            var tintByBlock = tintResolver.BuildTintByBlock(volume);
+            var colormaps = BlockTintResolver.LoadColormaps(assetReader);
+            var tintByBlock = BlockTintResolver.BuildTintByBlock(volume, biomeIndex, colormaps);
 
             var atlasTexture = AtlasBuilder.BuildAtlas(
                 assetReader,
@@ -42,24 +45,26 @@ namespace M2V.Editor.Bakery.Meshing
                 out var atlasAnimation
             );
 
+            var meshData = BuildMeshData(
+                volume,
+                min,
+                blockModelIndex,
+                blockModelResolver,
+                fullCubeById,
+                tintByBlock,
+                uvByTexture,
+                alphaByTexture,
+                applyCoordinateTransform
+            );
+
             return new BuildResult(
-                BuildMesh(
-                    volume,
-                    min,
-                    blockModelIndex,
-                    blockModelResolver,
-                    fullCubeById,
-                    tintByBlock,
-                    uvByTexture,
-                    alphaByTexture,
-                    applyCoordinateTransform
-                ),
+                meshData == null ? null : CreateMesh(meshData.Buffer),
                 atlasTexture,
                 atlasAnimation
             );
         }
 
-        private static Mesh? BuildMesh(
+        public static MeshBuildData? BuildMeshData(
             Volume volume,
             Vector3Int min,
             BlockModelIndex blockModelIndex,
@@ -68,7 +73,10 @@ namespace M2V.Editor.Bakery.Meshing
             IReadOnlyList<Color32Byte> tintByBlock,
             Dictionary<ResourceLocation, RectF> uvByTexture,
             Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
-            bool applyCoordinateTransform
+            bool applyCoordinateTransform,
+            Action<float>? reportProgress = null,
+            Action<int, int>? reportSlices = null,
+            CancellationToken cancellationToken = default
         )
         {
             var buffer = new MeshBuffer();
@@ -87,6 +95,14 @@ namespace M2V.Editor.Bakery.Meshing
 
             for (var z = 0; z < volume.SizeZ; z++)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return null;
+                }
+
+                var sliceProgress = (float)(z + 1) / volume.SizeZ;
+                reportProgress?.Invoke(sliceProgress);
+                reportSlices?.Invoke(z + 1, volume.SizeZ);
                 for (var y = 0; y < volume.SizeY; y++)
                 {
                     for (var x = 0; x < volume.SizeX; x++)
@@ -158,7 +174,210 @@ namespace M2V.Editor.Bakery.Meshing
             ApplyCoordinateTransform(
                 vertices, normals, trianglesTranslucent, min, applyCoordinateTransform
             );
-            return CreateMesh(buffer);
+            return new MeshBuildData(buffer);
+        }
+        public static List<MeshChunkData> BuildMeshDataByChunk(
+            Volume volume,
+            Vector3Int worldMin,
+            Vector3Int meshOriginMin,
+            BlockModelIndex blockModelIndex,
+            BlockModelResolver blockModelResolver,
+            List<bool> fullCubeById,
+            IReadOnlyList<Color32Byte> tintByBlock,
+            Dictionary<ResourceLocation, RectF> uvByTexture,
+            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
+            bool applyCoordinateTransform,
+            int groupSizeChunks = 4,
+            Action<float>? reportProgress = null,
+            Action<int, int>? reportChunks = null,
+            Action<int, int>? reportChunkCoords = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var chunkMinX = M2VMathHelper.FloorDiv(worldMin.x, 16);
+            var chunkMaxX = M2VMathHelper.FloorDiv(worldMin.x + volume.SizeX - 1, 16);
+            var chunkMinZ = M2VMathHelper.FloorDiv(worldMin.z, 16);
+            var chunkMaxZ = M2VMathHelper.FloorDiv(worldMin.z + volume.SizeZ - 1, 16);
+
+            var totalChunks = (chunkMaxX - chunkMinX + 1) * (chunkMaxZ - chunkMinZ + 1);
+            var results = new List<MeshChunkData>();
+            var processedChunks = 0;
+            if (groupSizeChunks <= 0)
+            {
+                groupSizeChunks = 1;
+            }
+
+            for (var cz = chunkMinZ; cz <= chunkMaxZ; cz += groupSizeChunks)
+            {
+                for (var cx = chunkMinX; cx <= chunkMaxX; cx += groupSizeChunks)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return results;
+                    }
+
+                    var groupMaxX = Math.Min(chunkMaxX, cx + groupSizeChunks - 1);
+                    var groupMaxZ = Math.Min(chunkMaxZ, cz + groupSizeChunks - 1);
+
+                    var worldX0 = cx * 16;
+                    var worldZ0 = cz * 16;
+                    var worldX1 = (groupMaxX + 1) * 16 - 1;
+                    var worldZ1 = (groupMaxZ + 1) * 16 - 1;
+
+                    var x0 = Mathf.Max(0, worldX0 - worldMin.x);
+                    var z0 = Mathf.Max(0, worldZ0 - worldMin.z);
+                    var x1 = Mathf.Min(volume.SizeX - 1, worldX1 - worldMin.x);
+                    var z1 = Mathf.Min(volume.SizeZ - 1, worldZ1 - worldMin.z);
+
+                    if (x0 > x1 || z0 > z1)
+                    {
+                        results.Add(new MeshChunkData(cx, cz, null));
+                        continue;
+                    }
+
+                    var data = BuildMeshDataForRange(
+                        volume,
+                        meshOriginMin,
+                        blockModelIndex,
+                        blockModelResolver,
+                        fullCubeById,
+                        tintByBlock,
+                        uvByTexture,
+                        alphaByTexture,
+                        applyCoordinateTransform,
+                        x0, x1,
+                        0, volume.SizeY - 1,
+                        z0, z1,
+                        cancellationToken
+                    );
+                    results.Add(new MeshChunkData(cx, cz, data));
+
+                    for (var z = cz; z <= groupMaxZ; z++)
+                    {
+                        for (var x = cx; x <= groupMaxX; x++)
+                        {
+                            processedChunks++;
+                            reportChunks?.Invoke(processedChunks, totalChunks);
+                            reportChunkCoords?.Invoke(x, z);
+                            reportProgress?.Invoke(totalChunks == 0 ? 1f : (float)processedChunks / totalChunks);
+                        }
+                    }
+                }
+            }
+
+            reportProgress?.Invoke(1f);
+            return results;
+        }
+
+        private static MeshBuildData? BuildMeshDataForRange(
+            Volume volume,
+            Vector3Int min,
+            BlockModelIndex blockModelIndex,
+            BlockModelResolver blockModelResolver,
+            List<bool> fullCubeById,
+            IReadOnlyList<Color32Byte> tintByBlock,
+            Dictionary<ResourceLocation, RectF> uvByTexture,
+            Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
+            bool applyCoordinateTransform,
+            int xStart, int xEnd,
+            int yStart, int yEnd,
+            int zStart, int zEnd,
+            CancellationToken cancellationToken
+        )
+        {
+            var buffer = new MeshBuffer();
+
+            var vertices = buffer.Vertices;
+            var normals = buffer.Normals;
+            var uvs = buffer.UVs;
+            var colors = buffer.Colors;
+            var trianglesSolid = buffer.TrianglesSolid;
+            var trianglesDoubleSidedCutout = buffer.TrianglesDoubleSidedCutout;
+            var trianglesTranslucent = buffer.TrianglesTranslucent;
+            var quadDedup = new HashSet<QuadKey>();
+
+            var sizeX = volume.SizeX;
+            var sizeY = volume.SizeY;
+
+            for (var z = zStart; z <= zEnd; z++)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return null;
+                }
+
+                for (var y = yStart; y <= yEnd; y++)
+                {
+                    for (var x = xStart; x <= xEnd; x++)
+                    {
+                        var id = volume.GetBlockId(x, y, z);
+                        if (id <= 0 || id >= blockModelIndex.Count)
+                        {
+                            continue;
+                        }
+
+                        var blockIndex = x + sizeX * (y + sizeY * z);
+                        var state = volume.BlockStates[id];
+                        if (Fluid.TryEmit(
+                                state,
+                                blockIndex,
+                                x, y, z,
+                                volume,
+                                tintByBlock,
+                                vertices,
+                                normals,
+                                uvs,
+                                colors,
+                                trianglesSolid,
+                                trianglesTranslucent,
+                                uvByTexture,
+                                alphaByTexture,
+                                applyCoordinateTransform
+                            ))
+                        {
+                            continue;
+                        }
+
+                        var variants = blockModelIndex[id];
+                        if (variants.Count == 0) continue;
+
+                        foreach (var variant in variants)
+                        {
+                            EmitModel(
+                                variant,
+                                blockModelResolver,
+                                blockModelIndex,
+                                blockIndex,
+                                x, y, z,
+                                volume,
+                                fullCubeById,
+                                tintByBlock,
+                                vertices, normals, uvs, colors,
+                                trianglesSolid,
+                                trianglesDoubleSidedCutout,
+                                trianglesTranslucent,
+                                uvByTexture,
+                                alphaByTexture,
+                                quadDedup,
+                                applyCoordinateTransform
+                            );
+                        }
+                    }
+                }
+            }
+
+            if (vertices.Count == 0) return null;
+
+            ApplyCoordinateTransform(
+                vertices, normals, trianglesSolid, min, applyCoordinateTransform
+            );
+            ApplyCoordinateTransform(
+                vertices, normals, trianglesDoubleSidedCutout, min, applyCoordinateTransform
+            );
+            ApplyCoordinateTransform(
+                vertices, normals, trianglesTranslucent, min, applyCoordinateTransform
+            );
+            return new MeshBuildData(buffer);
         }
 
         private static void EmitModel(
@@ -447,10 +666,7 @@ namespace M2V.Editor.Bakery.Meshing
             }
 
             var variants = blockModelIndex[id];
-            if (variants == null || variants.Count == 0)
-            {
-                return false;
-            }
+            if (variants.Count == 0) return false;
 
             foreach (var variant in variants)
             {
@@ -662,7 +878,7 @@ namespace M2V.Editor.Bakery.Meshing
             return tintByBlock[blockIndex];
         }
 
-        private static Mesh? CreateMesh(MeshBuffer buffer)
+        public static Mesh? CreateMesh(MeshBuffer buffer)
         {
             if (buffer.Vertices.Count == 0) return null;
 
@@ -742,7 +958,7 @@ namespace M2V.Editor.Bakery.Meshing
             return mesh;
         }
 
-        private sealed class MeshBuffer
+        public sealed class MeshBuffer
         {
             public List<Float3> Vertices { get; } = new();
             public List<Float3> Normals { get; } = new();

@@ -1,13 +1,18 @@
 #nullable enable
 
+using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.Rendering;
 
 namespace M2V.Editor.Bakery.Meshing
 {
     public static class MeshInstaller
     {
+        public sealed record ChunkMesh(string Name, Mesh Mesh);
+
         private const string CutoutShaderPath = "Assets/M2V/Editor/UnlitCutout.shader";
         private const string DoubleSidedCutoutShaderPath = "Assets/M2V/Editor/UnlitDoubleSided.shader";
         private const string DoubleSidedTransparentShaderPath = "Assets/M2V/Editor/UnlitDoubleSidedTransparent.shader";
@@ -63,6 +68,61 @@ namespace M2V.Editor.Bakery.Meshing
             }
 
             return gameObject;
+        }
+        public static GameObject InstallChunkMeshes(
+            string rootName,
+            IReadOnlyList<ChunkMesh> chunks,
+            Texture2D? atlasTexture,
+            AtlasAnimation? animation,
+            float blockScale
+        )
+        {
+            var root = GameObject.Find(rootName) ?? new GameObject(rootName);
+            ApplyBlockScale(root.transform, blockScale);
+            ClearRootMeshComponents(root);
+            ClearChildren(root.transform);
+
+            foreach (var chunk in chunks)
+            {
+                var child = new GameObject(chunk.Name);
+                child.transform.SetParent(root.transform, false);
+
+                var filter = EnsureMeshFilter(child, chunk.Name);
+                var renderer = EnsureMeshRenderer(child, chunk.Name);
+                if (filter != null)
+                {
+                    filter.sharedMesh = chunk.Mesh;
+                }
+
+                ApplyAtlasMaterial(renderer, atlasTexture, chunk.Mesh);
+
+                var colliderChild = EnsureColliderChild(child.transform);
+                var collider = colliderChild.GetComponent<MeshCollider>();
+                if (collider == null)
+                {
+                    collider = colliderChild.gameObject.AddComponent<MeshCollider>();
+                }
+
+                collider.sharedMesh = null;
+                collider.sharedMesh = chunk.Mesh;
+                collider.convex = false;
+            }
+
+            if (animation != null && atlasTexture != null)
+            {
+                var animator = root.GetComponent<AtlasAnimator>();
+                if (animator == null)
+                {
+                    animator = root.AddComponent<AtlasAnimator>();
+                }
+
+                if (animator != null)
+                {
+                    animator.Initialize(atlasTexture, animation);
+                }
+            }
+
+            return root;
         }
         private static void ApplyBlockScale(Transform target, float blockScale)
         {
@@ -186,6 +246,31 @@ namespace M2V.Editor.Bakery.Meshing
             var childObject = new GameObject("MeshCollider");
             childObject.transform.SetParent(parent, false);
             return childObject.transform;
+        }
+        private static void ClearChildren(Transform parent)
+        {
+            for (var i = parent.childCount - 1; i >= 0; i--)
+            {
+                var child = parent.GetChild(i);
+                Object.DestroyImmediate(child.gameObject);
+            }
+        }
+        private static void ClearRootMeshComponents(GameObject root)
+        {
+            if (root.TryGetComponent(out MeshFilter filter))
+            {
+                filter.sharedMesh = null;
+            }
+
+            if (root.TryGetComponent(out MeshRenderer renderer))
+            {
+                renderer.sharedMaterials = Array.Empty<Material>();
+            }
+
+            if (root.TryGetComponent(out MeshCollider collider))
+            {
+                collider.sharedMesh = null;
+            }
         }
 
         private static bool IsUsingScriptableRenderPipeline() =>

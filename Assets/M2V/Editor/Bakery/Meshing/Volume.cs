@@ -28,7 +28,10 @@ namespace M2V.Editor.Bakery.Meshing
             BiomeIndex biomeRegistry,
             bool logPaletteBounds,
             ref bool logChunkOnce,
-            out Volume volume
+            out Volume volume,
+            Action<float>? reportProgress = null,
+            Action<int, int>? reportChunkCoords = null,
+            System.Threading.CancellationToken cancellationToken = default
         )
         {
             volume = null!;
@@ -53,7 +56,10 @@ namespace M2V.Editor.Bakery.Meshing
                     sizeX, sizeY, sizeZ,
                     blockStates, blockStateIds, biomeRegistry,
                     ref logChunkOnce,
-                    logPaletteBounds
+                    logPaletteBounds,
+                    reportProgress,
+                    reportChunkCoords,
+                    cancellationToken
                 ))
             {
                 return false;
@@ -114,7 +120,10 @@ namespace M2V.Editor.Bakery.Meshing
             List<BlockState> states,
             Dictionary<BlockState, int> stateIdsByKey,
             BiomeIndex biomeRegistry,
-            ref bool logChunkOnce, bool logPaletteBounds
+            ref bool logChunkOnce, bool logPaletteBounds,
+            Action<float>? reportProgress,
+            Action<int, int>? reportChunkCoords,
+            System.Threading.CancellationToken cancellationToken
         )
         {
             if (!world.Has(levelStem))
@@ -127,11 +136,25 @@ namespace M2V.Editor.Bakery.Meshing
             var chunkMaxX = M2VMathHelper.FloorDiv(max.x, 16);
             var chunkMinZ = M2VMathHelper.FloorDiv(min.z, 16);
             var chunkMaxZ = M2VMathHelper.FloorDiv(max.z, 16);
+            var totalChunks = (chunkMaxX - chunkMinX + 1) * (chunkMaxZ - chunkMinZ + 1);
+            var processedChunks = 0;
 
             for (var cx = chunkMinX; cx <= chunkMaxX; cx++)
             {
                 for (var cz = chunkMinZ; cz <= chunkMaxZ; cz++)
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return false;
+                    }
+
+                    processedChunks++;
+                    if (totalChunks > 0)
+                    {
+                        reportProgress?.Invoke((float)processedChunks / totalChunks);
+                    }
+                    reportChunkCoords?.Invoke(cx, cz);
+
                     var chunk = world.GetChunkAt(levelStem, cx, cz);
                     if (chunk == null)
                     {

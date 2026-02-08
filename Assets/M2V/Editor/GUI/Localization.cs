@@ -47,6 +47,7 @@ namespace M2V.Editor.GUI
                 Keys.OpenFolder => "Open Folder",
                 Keys.PlayCaption => "Ready to build",
                 Keys.GenerateButton => "GENERATE",
+                Keys.Cancel => "Cancel",
                 Keys.SummaryWorld => "World",
                 Keys.SummaryRange => "Range",
                 Keys.SummaryDimension => "Dimension",
@@ -67,6 +68,7 @@ namespace M2V.Editor.GUI
                 Keys.DialogMeshFailed => "Mesh generation failed.",
                 Keys.LoadingTitle => "Loading...",
                 Keys.LoadingPreparing => "Preparing...",
+                Keys.LoadingCancelling => "Cancelling...",
                 Keys.LoadingReadingBlocks => "Reading blocks…",
                 Keys.LoadingGeneratingMesh => "Generating mesh…",
                 Keys.LoadingApplyingMaterial => "Applying material…",
@@ -105,6 +107,7 @@ namespace M2V.Editor.GUI
                 Keys.OpenFolder => "フォルダを開く",
                 Keys.PlayCaption => "生成の準備完了",
                 Keys.GenerateButton => "生成",
+                Keys.Cancel => "キャンセル",
                 Keys.SummaryWorld => "ワールド",
                 Keys.SummaryRange => "範囲",
                 Keys.SummaryDimension => "ディメンション",
@@ -125,6 +128,7 @@ namespace M2V.Editor.GUI
                 Keys.DialogMeshFailed => "メッシュ生成に失敗しました。",
                 Keys.LoadingTitle => "読み込み中...",
                 Keys.LoadingPreparing => "準備中...",
+                Keys.LoadingCancelling => "キャンセル中...",
                 Keys.LoadingReadingBlocks => "ブロックを読み込み中…",
                 Keys.LoadingGeneratingMesh => "メッシュ生成中…",
                 Keys.LoadingApplyingMaterial => "マテリアル適用中…",
@@ -161,6 +165,7 @@ namespace M2V.Editor.GUI
             internal const string OpenFolder = "action.open_folder";
             internal const string PlayCaption = "generate.ready";
             internal const string GenerateButton = "generate.button";
+            internal const string Cancel = "action.cancel";
             internal const string SummaryWorld = "summary.world";
             internal const string SummaryRange = "summary.range";
             internal const string SummaryDimension = "summary.dimension";
@@ -182,6 +187,7 @@ namespace M2V.Editor.GUI
             internal const string DialogMeshFailed = "dialog.mesh_failed";
             internal const string LoadingTitle = "loading.title";
             internal const string LoadingPreparing = "loading.preparing";
+            internal const string LoadingCancelling = "loading.cancelling";
             internal const string LoadingReadingBlocks = "loading.reading_blocks";
             internal const string LoadingGeneratingMesh = "loading.generating_mesh";
             internal const string LoadingApplyingMaterial = "loading.applying_material";

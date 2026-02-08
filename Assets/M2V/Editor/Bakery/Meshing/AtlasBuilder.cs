@@ -20,7 +20,8 @@ namespace M2V.Editor.Bakery.Meshing
             HashSet<ResourceLocation> texturePaths,
             out Dictionary<ResourceLocation, RectF> uvByTexture,
             out Dictionary<ResourceLocation, TextureAlphaMode> alphaByTexture,
-            out AtlasAnimation? atlasAnimation
+            out AtlasAnimation? atlasAnimation,
+            Action<float>? reportProgress = null
         )
         {
             uvByTexture = new Dictionary<ResourceLocation, RectF>();
@@ -36,6 +37,7 @@ namespace M2V.Editor.Bakery.Meshing
 
             foreach (var name in names)
             {
+                reportProgress?.Invoke(names.Count == 0 ? 1f : (float)textures.Count / names.Count);
                 var loaded = TryLoadTexture(assetReader, name);
                 var resolved = loaded
                                ?? TryLoadTexture(assetReader, FallbackTexture)
@@ -80,6 +82,7 @@ namespace M2V.Editor.Bakery.Meshing
 
             for (var i = 0; i < textures.Count; i++)
             {
+                reportProgress?.Invoke(textures.Count == 0 ? 1f : (float)i / textures.Count);
                 var col = i % columns;
                 var row = i / columns;
                 var x = col * tileSize;
@@ -111,6 +114,7 @@ namespace M2V.Editor.Bakery.Meshing
 
             atlas.Apply();
             atlasAnimation = animatedEntries.Count > 0 ? new AtlasAnimation(animatedEntries) : null;
+            reportProgress?.Invoke(1f);
             return FinalizeAtlas(atlas);
         }
 

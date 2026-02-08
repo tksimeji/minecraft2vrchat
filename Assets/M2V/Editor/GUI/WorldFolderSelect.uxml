@@ -124,8 +124,12 @@
                 <VisualElement class="m2v-loading-panel">
                     <Label name="loadingTitle" text="Loading..." class="m2v-loading-title" />
                     <Label name="loadingStatusLabel" text="Preparing" class="m2v-loading-status" />
+                    <Image name="loadingMap" class="m2v-loading-map" />
                     <VisualElement class="m2v-loading-bar-frame">
                         <VisualElement name="loadingBar" class="m2v-loading-bar" />
+                    </VisualElement>
+                    <VisualElement class="m2v-loading-actions">
+                        <Button name="cancelButton" text="Cancel" class="m2v-button m2v-button--small" />
                     </VisualElement>
                 </VisualElement>
             </VisualElement>
