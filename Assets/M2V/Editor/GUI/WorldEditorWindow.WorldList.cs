@@ -143,8 +143,11 @@ namespace M2V.Editor.GUI
             var path = _state.GetSelectedPath();
             var worldDir = _state.GetSelectedWorld();
             var isValid = worldDir != null;
+            var hasJar = isValid && HasMinecraftJarForWorld(worldDir);
             _openButton?.SetEnabled(!string.IsNullOrEmpty(path) && Directory.Exists(path));
-            _nextWorldButton?.SetEnabled(isValid);
+            _nextWorldButton?.SetEnabled(isValid && hasJar);
+            _stepRange?.SetEnabled(hasJar);
+            _stepGenerate?.SetEnabled(hasJar);
             _meshButton?.SetEnabled(isValid);
 
             _statusLabel.RemoveFromClassList("ok");
@@ -153,6 +156,7 @@ namespace M2V.Editor.GUI
             if (string.IsNullOrEmpty(path))
             {
                 SetStatus(Localization.Get(_state.Language, Localization.Keys.StatusNoFolder), isOk: false);
+                HideJarWarningCallout();
                 HandleWorldSelectionChanged(null, string.Empty);
                 UpdateSummary();
                 return;
@@ -162,10 +166,23 @@ namespace M2V.Editor.GUI
             {
                 SetStatus(Localization.Get(_state.Language, Localization.Keys.StatusValid), isOk: true);
                 HandleWorldSelectionChanged(worldDir, path);
+                if (!hasJar)
+                {
+                    ShowJarWarningCallout(worldDir.VersionName);
+                    if (_currentPageIndex != 0)
+                    {
+                        SetPage(0);
+                    }
+                }
+                else
+                {
+                    HideJarWarningCallout();
+                }
             }
             else
             {
                 SetStatus(Localization.Get(_state.Language, Localization.Keys.StatusInvalid), isOk: false);
+                HideJarWarningCallout();
                 HandleWorldSelectionChanged(null, string.Empty);
             }
             UpdateSummary();

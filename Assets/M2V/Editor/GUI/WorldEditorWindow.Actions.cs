@@ -188,9 +188,8 @@ namespace M2V.Editor.GUI
             var jarPath = GetMinecraftVersionJarPath(versionName);
             if (string.IsNullOrEmpty(jarPath))
             {
-                EditorUtility.DisplayDialog(Localization.Get(_state.Language, Localization.Keys.DialogTitle),
-                    Localization.Get(_state.Language, Localization.Keys.DialogJarMissing),
-                    "OK");
+                ShowJarWarningCallout(versionName);
+                SetPage(0);
                 return;
             }
 

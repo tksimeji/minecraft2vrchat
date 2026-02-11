@@ -68,6 +68,8 @@ namespace M2V.Editor.GUI
                 Keys.DialogEnterRange => "Please enter valid range values.",
                 Keys.DialogJarMissing => "Minecraft version jar not found for this world.",
                 Keys.DialogMeshFailed => "Mesh generation failed.",
+                Keys.JarMissingCallout => "Open Minecraft Launcher, create a launch configuration for \"{0}\", and run it once.",
+                Keys.SelectWorldBalloon => "Please select a world first.",
                 Keys.LoadingTitle => "Loading...",
                 Keys.LoadingPreparing => "Preparing...",
                 Keys.LoadingCancelling => "Cancelling...",
@@ -130,6 +132,8 @@ namespace M2V.Editor.GUI
                 Keys.DialogEnterRange => "範囲の値を正しく入力してください。",
                 Keys.DialogJarMissing => "このワールドに対応するMinecraftのjarが見つかりません。",
                 Keys.DialogMeshFailed => "メッシュ生成に失敗しました。",
+                Keys.JarMissingCallout => "Minecraft Launcherで「{0}」の起動構成を作成して一度起動してください。",
+                Keys.SelectWorldBalloon => "まずワールドを選択してください。",
                 Keys.LoadingTitle => "読み込み中...",
                 Keys.LoadingPreparing => "準備中...",
                 Keys.LoadingCancelling => "キャンセル中...",
@@ -191,6 +195,8 @@ namespace M2V.Editor.GUI
             internal const string DialogEnterRange = "dialog.enter_range";
             internal const string DialogJarMissing = "dialog.jar_missing";
             internal const string DialogMeshFailed = "dialog.mesh_failed";
+            internal const string JarMissingCallout = "warning.jar_missing";
+            internal const string SelectWorldBalloon = "warning.select_world";
             internal const string LoadingTitle = "loading.title";
             internal const string LoadingPreparing = "loading.preparing";
             internal const string LoadingCancelling = "loading.cancelling";

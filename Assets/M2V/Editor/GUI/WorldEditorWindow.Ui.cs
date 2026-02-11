@@ -1,5 +1,7 @@
 #nullable enable
 
+using System;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -53,6 +55,10 @@ namespace M2V.Editor.GUI
             _dimensionOverworldLabel = rootVisualElement.Q<Label>("dimensionOverworldLabel");
             _dimensionNetherLabel = rootVisualElement.Q<Label>("dimensionNetherLabel");
             _dimensionEndLabel = rootVisualElement.Q<Label>("dimensionEndLabel");
+            _jarWarningCallout = rootVisualElement.Q<VisualElement>("jarWarningCallout");
+            _jarWarningText = rootVisualElement.Q<Label>("jarWarningText");
+            _jarHoverBalloon = rootVisualElement.Q<VisualElement>("jarHoverBalloon");
+            _jarHoverBalloonText = rootVisualElement.Q<Label>("jarHoverBalloonText");
             _generateTitle = rootVisualElement.Q<Label>("generateTitle");
             _generateHint = rootVisualElement.Q<Label>("generateHint");
             _playCaption = rootVisualElement.Q<Label>("playCaption");
@@ -100,6 +106,7 @@ namespace M2V.Editor.GUI
             ConfigureDimensionIcons();
             ConfigureLanguageDropdown();
             ApplyLocalization();
+            HideJarWarningCallout();
         }
 
         private void BindUiEvents()
@@ -116,16 +123,30 @@ namespace M2V.Editor.GUI
             }
 
             BindNavigation();
+            RegisterJarWarningHoverPulse();
         }
 
         private void BindNavigation()
         {
             _currentPageIndex = 0;
-            _nextWorldButton.clicked += () =>
+            _nextWorldButton.RegisterCallback<ClickEvent>(evt =>
             {
                 Debug.Log("[M2V] Navigate: Worlds -> Range");
+                if (_state.GetSelectedWorld() == null)
+                {
+                    ShowBalloonAt(
+                        Localization.Get(_state.Language, Localization.Keys.SelectWorldBalloon),
+                        evt.position
+                    );
+                    return;
+                }
+                if (!TryEnterRange())
+                {
+                    return;
+                }
+
                 SetPage(1);
-            };
+            });
 
             _nextRangeButton.clicked += () =>
             {
@@ -146,13 +167,261 @@ namespace M2V.Editor.GUI
             };
 
             _stepWorld.RegisterCallback<ClickEvent>(_ => SetPage(0));
-            _stepRange.RegisterCallback<ClickEvent>(_ => SetPage(1));
-            _stepGenerate.RegisterCallback<ClickEvent>(_ => SetPage(2));
+            _stepRange.RegisterCallback<ClickEvent>(evt =>
+            {
+                if (_state.GetSelectedWorld() == null)
+                {
+                    ShowBalloonAt(
+                        Localization.Get(_state.Language, Localization.Keys.SelectWorldBalloon),
+                        evt.position
+                    );
+                    return;
+                }
+                if (TryEnterRange())
+                {
+                    SetPage(1);
+                }
+            });
+            _stepGenerate.RegisterCallback<ClickEvent>(evt =>
+            {
+                if (_state.GetSelectedWorld() == null)
+                {
+                    ShowBalloonAt(
+                        Localization.Get(_state.Language, Localization.Keys.SelectWorldBalloon),
+                        evt.position
+                    );
+                    return;
+                }
+                if (TryEnterRange())
+                {
+                    SetPage(2);
+                }
+            });
         }
 
         private bool IsUiReady(Button? clearButton, Button? customImportButton, Button? reloadButton)
         {
             return clearButton != null && customImportButton != null && reloadButton != null;
+        }
+
+        private bool TryEnterRange()
+        {
+            var world = _state.GetSelectedWorld();
+            if (world == null)
+            {
+                return false;
+            }
+
+            if (HasMinecraftJarForWorld(world))
+            {
+                HideJarWarningCallout();
+                return true;
+            }
+
+            ShowJarWarningCallout(world.VersionName);
+            return false;
+        }
+
+        private bool HasMinecraftJarForWorld(M2V.Editor.Minecraft.World.World world)
+        {
+            var versionName = world.VersionName;
+            if (string.IsNullOrEmpty(versionName))
+            {
+                return false;
+            }
+
+            var jarPath = GetMinecraftVersionJarPath(versionName);
+            return !string.IsNullOrEmpty(jarPath);
+        }
+
+        private void ShowJarWarningCallout(string? versionName)
+        {
+            if (_jarWarningCallout == null || _jarWarningText == null)
+            {
+                return;
+            }
+
+            var displayVersion = string.IsNullOrEmpty(versionName) ? "x.x.x" : versionName;
+            var template = Localization.Get(_state.Language, Localization.Keys.JarMissingCallout);
+            _jarWarningText.text = string.Format(template, displayVersion);
+            _jarWarningCallout.style.display = DisplayStyle.Flex;
+            _jarMissingActive = true;
+            _lastHoverTarget = null;
+            _jarWarningCallout.style.scale = new Scale(Vector3.one);
+            HideJarHoverBalloon();
+        }
+
+        private void HideJarWarningCallout()
+        {
+            if (_jarWarningCallout == null)
+            {
+                return;
+            }
+
+            _jarWarningCallout.style.display = DisplayStyle.None;
+            _jarMissingActive = false;
+            _lastHoverTarget = null;
+            _calloutPulse?.Pause();
+            HideJarHoverBalloon();
+        }
+
+        private void RegisterJarWarningHoverPulse()
+        {
+            if (_rootElement == null)
+            {
+                return;
+            }
+
+            _rootElement.RegisterCallback<PointerMoveEvent>(evt =>
+            {
+                var worldPos = _rootElement.LocalToWorld(evt.position);
+                var hoverTarget = GetJarWarningHoverTarget(worldPos);
+                if (_state.GetSelectedWorld() == null)
+                {
+                    if (hoverTarget == null)
+                    {
+                        _lastHoverTarget = null;
+                        HideJarHoverBalloon();
+                        return;
+                    }
+
+                    ShowBalloonAt(
+                        Localization.Get(_state.Language, Localization.Keys.SelectWorldBalloon),
+                        worldPos,
+                        autoHideSeconds: 0f
+                    );
+                    _lastHoverTarget = hoverTarget;
+                    return;
+                }
+
+                if (!_jarMissingActive || _jarWarningCallout == null)
+                {
+                    HideJarHoverBalloon();
+                    return;
+                }
+
+                if (hoverTarget == null)
+                {
+                    _lastHoverTarget = null;
+                    HideJarHoverBalloon();
+                    return;
+                }
+
+                ShowJarHoverBalloon(worldPos);
+                if (ReferenceEquals(hoverTarget, _lastHoverTarget))
+                {
+                    return;
+                }
+
+                _lastHoverTarget = hoverTarget;
+                PulseCallout();
+            });
+
+            _rootElement.RegisterCallback<PointerLeaveEvent>(_ =>
+            {
+                _lastHoverTarget = null;
+                HideJarHoverBalloon();
+            });
+        }
+
+        private VisualElement? GetJarWarningHoverTarget(Vector2 position)
+        {
+            if (_nextWorldButton != null && _nextWorldButton.worldBound.Contains(position))
+            {
+                return _nextWorldButton;
+            }
+            if (_stepRange != null && _stepRange.worldBound.Contains(position))
+            {
+                return _stepRange;
+            }
+            if (_stepGenerate != null && _stepGenerate.worldBound.Contains(position))
+            {
+                return _stepGenerate;
+            }
+            if (_nextRangeButton != null && _nextRangeButton.worldBound.Contains(position))
+            {
+                return _nextRangeButton;
+            }
+
+            return null;
+        }
+
+        private void PulseCallout()
+        {
+            if (_jarWarningCallout == null)
+            {
+                return;
+            }
+
+            _calloutPulse?.Pause();
+            var start = Time.realtimeSinceStartup;
+            const float duration = 0.28f;
+            _calloutPulse = _jarWarningCallout.schedule.Execute(() =>
+            {
+                var t = (Time.realtimeSinceStartup - start) / duration;
+                if (t >= 1f)
+                {
+                    _jarWarningCallout.style.scale = new Scale(Vector3.one);
+                    _calloutPulse?.Pause();
+                    return;
+                }
+
+                var eased = t < 0.5f ? t * 2f : (1f - t) * 2f;
+                var scale = Mathf.Lerp(1f, 1.08f, eased);
+                _jarWarningCallout.style.scale = new Scale(new Vector3(scale, scale, 1f));
+            }).Every(16);
+        }
+
+        private void ShowJarHoverBalloon(Vector2 worldPosition)
+        {
+            if (_jarHoverBalloon == null || _jarHoverBalloonText == null)
+            {
+                return;
+            }
+
+            var world = _state.GetSelectedWorld();
+            var displayVersion = string.IsNullOrEmpty(world?.VersionName) ? "x.x.x" : world!.VersionName;
+            var template = Localization.Get(_state.Language, Localization.Keys.JarMissingCallout);
+            ShowBalloonAt(string.Format(template, displayVersion), worldPosition, autoHideSeconds: 0f);
+        }
+
+        private void ShowBalloonAt(string message, Vector2 worldPosition, float autoHideSeconds = 2f)
+        {
+            if (_jarHoverBalloon == null || _jarHoverBalloonText == null)
+            {
+                return;
+            }
+
+            _jarHoverBalloonText.text = message;
+
+            var parent = _jarHoverBalloon.parent;
+            if (parent == null)
+            {
+                return;
+            }
+
+            var local = parent.WorldToLocal(worldPosition);
+            _jarHoverBalloon.style.left = local.x + 12f;
+            _jarHoverBalloon.style.top = local.y + 12f;
+            _jarHoverBalloon.style.display = DisplayStyle.Flex;
+
+            _balloonAutoHide?.Pause();
+            if (autoHideSeconds > 0f)
+            {
+                _balloonAutoHide = _jarHoverBalloon.schedule.Execute(HideJarHoverBalloon)
+                    .StartingIn((long)(autoHideSeconds * 1000f));
+            }
+        }
+
+        private void HideJarHoverBalloon()
+        {
+            if (_jarHoverBalloon == null)
+            {
+                return;
+            }
+
+            _balloonAutoHide?.Pause();
+            _jarHoverBalloon.style.display = DisplayStyle.None;
         }
 
         private void SetPage(int pageIndex)

@@ -39,6 +39,8 @@ namespace M2V.Editor.GUI
         private Label _dimensionOverworldLabel = null!;
         private Label _dimensionNetherLabel = null!;
         private Label _dimensionEndLabel = null!;
+        private VisualElement _jarWarningCallout = null!;
+        private Label _jarWarningText = null!;
         private Label _generateTitle = null!;
         private Label _generateHint = null!;
         private Label _playCaption = null!;
@@ -78,6 +80,12 @@ namespace M2V.Editor.GUI
         private Label _stepGenerate = null!;
         private int _currentPageIndex;
         private IVisualElementScheduledItem? _pageAnimation;
+        private IVisualElementScheduledItem? _calloutPulse;
+        private IVisualElementScheduledItem? _balloonAutoHide;
+        private VisualElement? _lastHoverTarget;
+        private bool _jarMissingActive;
+        private VisualElement _jarHoverBalloon = null!;
+        private Label _jarHoverBalloonText = null!;
 
         private readonly EditorState _state = new();
         private static bool _sLOGChunkDatOnce;

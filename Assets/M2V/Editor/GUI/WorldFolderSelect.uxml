@@ -35,6 +35,12 @@
                         </VisualElement>
 
                         <Label name="statusLabel" text="No folder selected." class="m2v-status" />
+                        <VisualElement name="jarWarningCallout" class="m2v-callout m2v-callout--warning">
+                            <Label name="jarWarningText" text="Open Minecraft Launcher, create a launch configuration for &quot;x.x.x&quot;, and run it once." class="m2v-callout-text" />
+                        </VisualElement>
+                        <VisualElement name="jarHoverBalloon" class="m2v-balloon">
+                            <Label name="jarHoverBalloonText" text="Open Minecraft Launcher, create a launch configuration for &quot;x.x.x&quot;, and run it once." class="m2v-balloon-text" />
+                        </VisualElement>
                         <VisualElement class="m2v-divider" />
                         <VisualElement class="m2v-wizard-spacer" />
                         <VisualElement class="m2v-button-row m2v-wizard-footer">

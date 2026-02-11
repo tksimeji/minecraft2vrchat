@@ -536,6 +536,38 @@
     color: #ff6b6b;
 }
 
+.m2v-callout {
+    display: none;
+    margin-top: 6px;
+    padding: 8px;
+    border-width: 1px;
+    background-color: #3a0b0b;
+    border-color: #d14b4b;
+}
+
+.m2v-callout-text {
+    font-size: 11px;
+    color: #ffd6d6;
+    white-space: normal;
+}
+
+.m2v-balloon {
+    display: none;
+    position: absolute;
+    max-width: 260px;
+    padding: 6px 8px;
+    background-color: #420d0d;
+    border-width: 1px;
+    border-color: #d14b4b;
+    border-radius: 4px;
+}
+
+.m2v-balloon-text {
+    font-size: 11px;
+    color: #ffd6d6;
+    white-space: normal;
+}
+
 .m2v-hint {
     font-size: 11px;
     color: #f5d76e;
